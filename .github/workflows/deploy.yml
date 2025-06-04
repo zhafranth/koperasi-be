@@ -1,0 +1,40 @@
+name: Deploy Backend to EC2
+
+on:
+  push:
+    branches:
+      - main # atau 'production' jika kamu pakai branch itu
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+
+      # Opsional: Validasi build di GitHub Actions
+      - name: Install dependencies (Yarn)
+        run: yarn install
+
+      - name: Build TypeScript
+        run: yarn build
+
+      - name: Deploy to EC2 via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_KEY }}
+          script: |
+            cd /koperas-be
+            git pull origin main
+            yarn install
+            yarn migrate     # pastikan ini script-nya ada di package.json
+            yarn build
+            sudo pm2 restart koperasi-be

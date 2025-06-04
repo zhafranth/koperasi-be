@@ -29,6 +29,9 @@ app.use("/pinjaman", pinjamanRouter);
 app.use("/cicilan", cicilanRouter);
 app.use("/simpanan", authenticateToken, simpananRouter); // Middleware untuk autentikasi toke
 app.use("/jenis-simpanan", authenticateToken, jenisSimpananRouter);
+app.use("/coba", (req, res) => {
+  res.send("Hello B!tch");
+});
 
 app.get("/", (req, res) => {
   res.send("Hello World!");
