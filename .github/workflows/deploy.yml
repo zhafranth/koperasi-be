@@ -32,7 +32,7 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_KEY }}
           script: |
-            cd /koperas-be
+            cd /koperasi-be
             git pull origin main
             yarn install
             yarn migrate     # pastikan ini script-nya ada di package.json
