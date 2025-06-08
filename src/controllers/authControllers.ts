@@ -6,7 +6,6 @@ import db from "../../db";
 export const register = async (req: Request, res: Response) => {
   try {
     const { username, password, ...restPayload } = req.body;
-    console.log("req.body", req.body);
     const existingAnggota = await db("anggota")
       .where("username", username)
       .first();

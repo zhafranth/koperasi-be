@@ -2,11 +2,49 @@ import db from "../../db";
 
 class Pinjaman {
   static async getAll() {
-    return await db("pinjaman");
+    return await db("pinjaman")
+      .join("anggota", "pinjaman.id_anggota", "anggota.id")
+      .select(
+        "pinjaman.id",
+        "pinjaman.jumlah",
+        "pinjaman.keterangan",
+        "pinjaman.status",
+        "pinjaman.tanggal_pengajuan",
+        "anggota.nama as nama_anggota"
+      );
   }
 
   static async getByUserId(id: number) {
     return await db("pinjaman").where("id_anggota", id);
+  }
+
+  static async getById(id: number) {
+    try {
+      const result = await db("pinjaman as p")
+        .join("cicilan as c", "p.id", "c.id_pinjaman")
+        .join("anggota as a", "p.id_anggota", "a.id")
+        .select(
+          "p.keterangan",
+          "p.status",
+          "p.jumlah",
+          "a.nama as nama_anggota",
+          "p.tanggal_pengajuan",
+          {
+            sisa: db.raw("p.jumlah - COALESCE(SUM(c.jumlah), 0)"),
+          }
+        )
+        .where("p.id", id)
+        .first();
+      if (!result.jumlah) {
+        throw new Error("Pinjaman not found");
+      }
+      return result;
+    } catch (error) {
+      throw error;
+    }
+  }
+  static async getListCicilan(id: number) {
+    return await db("cicilan").where("id_pinjaman", id);
   }
 
   static async create(payload: any) {

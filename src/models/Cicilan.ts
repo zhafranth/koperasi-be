@@ -4,6 +4,10 @@ class Cicilan {
   static async getAll() {
     return await db("cicilan");
   }
+  static async getByPinjamanId(id: number) {
+    const result = await db("cicilan as c").where("c.id_pinjaman", id);
+    return result;
+  }
   static async create(payload: any) {
     try {
       const { id_pinjaman, jumlah, tanggal, keterangan } = payload;

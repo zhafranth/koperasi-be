@@ -25,3 +25,16 @@ export const createCicilan = async (req: Request, res: Response) => {
     res.status(500).json({ message: error?.message });
   }
 };
+
+export const getCicilanByPinjamanId = async (req: Request, res: Response) => {
+  try {
+    const { id_pinjaman } = req.params;
+    const cicilan = await Cicilan.getByPinjamanId(parseInt(id_pinjaman));
+    res.json({
+      data: cicilan,
+      message: "Success get cicilan by pinjaman id",
+    });
+  } catch (error: any) {
+    res.status(500).json({ message: error?.message });
+  }
+};
