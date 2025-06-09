@@ -1,7 +1,7 @@
 import db from "../../db";
 
 class Pinjaman {
-  static async getAll() {
+  static async getAll({ status = "disetujui" }: { status?: string }) {
     return await db("pinjaman")
       .join("anggota", "pinjaman.id_anggota", "anggota.id")
       .select(
@@ -11,7 +11,8 @@ class Pinjaman {
         "pinjaman.status",
         "pinjaman.tanggal_pengajuan",
         "anggota.nama as nama_anggota"
-      );
+      )
+      .where("pinjaman.status", status);
   }
 
   static async getByUserId(id: number) {

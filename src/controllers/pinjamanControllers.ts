@@ -4,7 +4,8 @@ import Cicilan from "../models/Cicilan";
 
 export const getAllPinjaman = async (req: Request, res: Response) => {
   try {
-    const pinjaman = await Pinjaman.getAll();
+    const querParams = req.query;
+    const pinjaman = await Pinjaman.getAll(querParams);
     res.json({
       data: pinjaman,
       message: "Success get all pinjaman",
