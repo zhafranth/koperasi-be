@@ -25,6 +25,7 @@ class Pinjaman {
         .join("cicilan as c", "p.id", "c.id_pinjaman")
         .join("anggota as a", "p.id_anggota", "a.id")
         .select(
+          "p.id",
           "p.keterangan",
           "p.status",
           "p.jumlah",

@@ -11,7 +11,8 @@ class Transaksi {
         "transaksi.tanggal",
         "transaksi.saldo_akhir",
         "anggota.nama as nama_anggota"
-      );
+      )
+      .orderBy("tanggal", "desc");
   }
 }
 
