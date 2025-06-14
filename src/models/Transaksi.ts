@@ -53,22 +53,33 @@ class Transaksi {
     };
   }
   static async getTotalTransaksi() {
-    const total = await db("transaksi")
-      .select({
-        jumlah_dana: db("transaksi").sum("jumlah"),
-        jumlah_pinjaman: db("transaksi")
-          .sum("jumlah")
-          .where("jenis", "pinjaman"),
-        total_dana: db("transaksi")
-          .sum("jumlah")
-          .where("jenis", "!=", "pinjaman"),
-      })
-      .first();
-    return {
-      jumlah_dana: Number(total.jumlah_dana || 0),
-      jumlah_pinjaman: Number(total.jumlah_pinjaman || 0),
-      total_dana: Number(total.total_dana || 0),
-    };
+    try {
+      const total = await db("transaksi")
+        .select({
+          jumlah_dana: db("transaksi").sum("jumlah"),
+          jumlah_pinjaman: db("transaksi")
+            .sum("jumlah")
+            .where("jenis", "pinjaman"),
+          total_dana: db("transaksi")
+            .sum("jumlah")
+            .where("jenis", "!=", "pinjaman"),
+        })
+        .first();
+      if (!total) {
+        return {
+          jumlah_dana: 0,
+          jumlah_pinjaman: 0,
+          total_dana: 0,
+        };
+      }
+      return {
+        jumlah_dana: Number(total.jumlah_dana || 0),
+        jumlah_pinjaman: Number(total.jumlah_pinjaman || 0),
+        total_dana: Number(total.total_dana || 0),
+      };
+    } catch (error) {
+      console.log(error);
+    }
   }
 }
 
