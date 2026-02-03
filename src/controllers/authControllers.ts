@@ -6,7 +6,7 @@ import db from "../../db";
 export const register = async (req: Request, res: Response) => {
   try {
     const { username, password, ...restPayload } = req.body;
-    const existingAnggota = await db("anggota")
+    const existingAnggota = await db("r_anggota")
       .where("username", username)
       .first();
 
@@ -16,7 +16,7 @@ export const register = async (req: Request, res: Response) => {
 
     const hashedPassword = bcrypt.hashSync(password, 10);
 
-    await db("anggota").insert({
+    await db("r_anggota").insert({
       username,
       password: hashedPassword,
       ...restPayload,
@@ -32,7 +32,7 @@ export const login = async (req: Request, res: Response) => {
     const { username, password } = req.body;
 
     // Check if the username exists
-    const anggota = await db("anggota").where("username", username).first();
+    const anggota = await db("r_anggota").where("username", username).first();
 
     if (!anggota) {
       res.status(401).json({ message: "Invalid username" });
@@ -47,7 +47,7 @@ export const login = async (req: Request, res: Response) => {
     const token = jwt.sign(
       { id: anggota.id, username: anggota.username },
       process.env.JWT_SECRET as string,
-      { expiresIn: "1h" }
+      { expiresIn: "1h" },
     );
 
     res.json({ token });

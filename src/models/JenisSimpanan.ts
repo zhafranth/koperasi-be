@@ -2,7 +2,7 @@ import db from "../../db";
 
 class JenisSimpanan {
   static async getAll() {
-    return await db("jenis_simpanan");
+    return await db("r_jenis_simpanan");
   }
 
   static async create({
@@ -16,7 +16,7 @@ class JenisSimpanan {
     is_wajib: boolean;
     deskripsi: string;
   }) {
-    await db("jenis_simpanan").insert({
+    await db("r_jenis_simpanan").insert({
       nama_simpanan: nama,
       minimal_amount,
       is_wajib,

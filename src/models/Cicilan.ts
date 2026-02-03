@@ -20,13 +20,13 @@ class Cicilan {
           SELECT SUM(c.jumlah) 
           FROM cicilan c 
           WHERE c.id_pinjaman = pinjaman.id
-        ), 0) AS sisa_pinjaman`
-          )
+        ), 0) AS sisa_pinjaman`,
+          ),
         )
         .where("id", id_pinjaman)
         .first();
 
-      const anggota = await db("anggota")
+      const anggota = await db("r_anggota")
         .where("id", sisaPinjaman.id_anggota)
         .first();
       if (!sisaPinjaman) {

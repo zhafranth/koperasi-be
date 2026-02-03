@@ -14,7 +14,7 @@ class Transaksi {
 
     // Get total count for pagination
     const totalCount = await db("transaksi")
-      .join("anggota", "transaksi.id_anggota", "anggota.id")
+      .join("r_anggota", "transaksi.id_anggota", "r_anggota.id")
       .modify((qb) => {
         if (jenis) {
           qb.where("jenis", jenis);
@@ -25,7 +25,7 @@ class Transaksi {
 
     // Get paginated data
     const data = await db("transaksi")
-      .join("anggota", "transaksi.id_anggota", "anggota.id")
+      .join("r_anggota", "transaksi.id_anggota", "r_anggota.id")
       .modify((qb) => {
         if (jenis) {
           qb.where("jenis", jenis);
@@ -35,11 +35,11 @@ class Transaksi {
         "transaksi.id",
         "transaksi.jenis",
         "transaksi.jumlah",
-        "transaksi.tanggal",
+        "transaksi.createdAt",
         "transaksi.saldo_akhir",
-        "anggota.nama as nama_anggota"
+        "r_anggota.nama as nama_anggota",
       )
-      .orderBy("tanggal", "desc")
+      .orderBy("createdAt", "desc")
       .offset(offset)
       .limit(limit);
 
