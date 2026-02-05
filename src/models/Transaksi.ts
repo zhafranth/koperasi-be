@@ -36,10 +36,9 @@ class Transaksi {
         "transaksi.jenis",
         "transaksi.jumlah",
         "transaksi.createdAt",
-        "transaksi.saldo_akhir",
         "r_anggota.nama as nama_anggota",
       )
-      .orderBy("createdAt", "desc")
+      .orderBy("transaksi.createdAt", "desc")
       .offset(offset)
       .limit(limit);
 

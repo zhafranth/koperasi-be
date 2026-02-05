@@ -6,7 +6,7 @@ class Pinjaman {
       const result = await db("pinjaman")
         .join("r_anggota", "pinjaman.id_anggota", "r_anggota.id")
         .select(
-          "pinjaman.id",
+          "pinjaman.id_pinjaman",
           "pinjaman.jumlah",
           "pinjaman.keterangan",
           "pinjaman.status",
@@ -33,17 +33,16 @@ class Pinjaman {
         .join("cicilan as c", "p.id", "c.id_pinjaman")
         .join("r_anggota as a", "p.id_anggota", "a.id")
         .select(
-          "p.id",
+          "p.id_pinjaman",
           "p.keterangan",
           "p.status",
           "p.jumlah",
           "a.nama as nama_anggota",
-          "p.tanggal_pengajuan",
           {
             sisa: db.raw("p.jumlah - COALESCE(SUM(c.jumlah), 0)"),
           },
         )
-        .where("p.id", id)
+        .where("p.id_pinjaman", id)
         .first();
       if (!result.jumlah) {
         throw new Error("Pinjaman not found");
@@ -71,12 +70,6 @@ class Pinjaman {
         throw new Error("User not found");
       }
 
-      if (
-        jumlah >
-        anggota.saldo_simpanan * 0.8 - (totalPinjaman[0].total || 0)
-      ) {
-        throw new Error("Saldo pinjaman melebihi saldo anggota");
-      }
       const data = {
         id_anggota,
         jumlah,
