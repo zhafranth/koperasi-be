@@ -59,7 +59,7 @@ class Pinjaman {
 
   static async create(payload: any) {
     try {
-      const { id_anggota, jumlah, tanggal, keterangan } = payload;
+      const { id_anggota, jumlah, keterangan } = payload;
       const anggota = await db("r_anggota").where("id", id_anggota).first();
 
       const totalPinjaman = await db("pinjaman")
@@ -80,18 +80,16 @@ class Pinjaman {
       const data = {
         id_anggota,
         jumlah,
-        tanggal_pengajuan: tanggal,
-        tanggal_disetujui: tanggal,
-        status: "disetujui",
+        status: "proses",
         keterangan,
       };
-      await db("pinjaman").insert(data);
-      await db("transaksi").insert({
-        id_anggota,
-        jenis: "pinjaman",
-        jumlah: jumlah * -1,
-        tanggal,
-        saldo_akhir: anggota.saldo_simpanan,
+      await db.transaction(async (trx) => {
+        await trx("pinjaman").insert(data);
+        await trx("transaksi").insert({
+          id_anggota,
+          jenis: "pinjaman",
+          jumlah: jumlah * -1,
+        });
       });
     } catch (error) {
       throw error;
