@@ -228,6 +228,23 @@ Menyimpan catatan penarikan simpanan.
 
 ---
 
+### 10. events (Events/Kegiatan)
+
+Menyimpan data event/kegiatan koperasi.
+
+| Column | Type | Nullable | Key | Default | Description |
+|--------|------|----------|-----|---------|-------------|
+| id | int(11) | NO | PK | auto_increment | ID unik event |
+| title | varchar(255) | NO | | NULL | Judul event |
+| description | text | YES | | NULL | Deskripsi event |
+| tanggal | date | NO | | NULL | Tanggal pelaksanaan |
+| waktu | varchar(100) | YES | | NULL | Waktu pelaksanaan (contoh: "09:00 - 12:00 WIB") |
+| location | varchar(255) | YES | | NULL | Lokasi event |
+| kategori | enum('rapat','pelatihan','sosial','silaturahmi','olahraga','pendidikan','kesehatan','keagamaan','musyawarah','penggalangan_dana') | NO | | 'rapat' | Kategori event |
+| createdAt | datetime | YES | | CURRENT_TIMESTAMP | Tanggal dibuat |
+
+---
+
 ## System Tables
 
 | Table | Description |
