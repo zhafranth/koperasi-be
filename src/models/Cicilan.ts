@@ -10,53 +10,43 @@ class Cicilan {
   }
   static async create(payload: any) {
     try {
-      const { id_pinjaman, jumlah, tanggal, keterangan } = payload;
+      const { id_pinjaman, jumlah } = payload;
 
-      const sisaPinjaman = await db("pinjaman")
-        .select(
-          "id_anggota",
-          db.raw(
-            `jumlah - COALESCE((
-          SELECT SUM(c.jumlah) 
-          FROM cicilan c 
-          WHERE c.id_pinjaman = pinjaman.id
-        ), 0) AS sisa_pinjaman`,
-          ),
-        )
-        .where("id", id_pinjaman)
+      const pinjaman = await db("pinjaman")
+        .where("id_pinjaman", id_pinjaman)
         .first();
 
-      const anggota = await db("r_anggota")
-        .where("id", sisaPinjaman.id_anggota)
+      const cicilan = await db("cicilan")
+        .where("id_pinjaman", id_pinjaman)
+        .sum("jumlah as total_cicilan")
         .first();
-      if (!sisaPinjaman) {
+
+      if (!pinjaman) {
         throw new Error("Pinjaman tidak tersedia");
       }
-
-      if (jumlah > sisaPinjaman.sisa_pinjaman) {
+      if (jumlah > pinjaman.jumlah - (cicilan?.total_cicilan || 0)) {
         throw new Error("Jumlah cicilan melebihi sisa pinjaman");
       }
 
       const dataCicilan = {
         id_pinjaman,
         jumlah,
-        tanggal_bayar: tanggal,
-        keterangan,
       };
 
       await db("cicilan").insert(dataCicilan);
       await db("transaksi").insert({
-        id_anggota: sisaPinjaman.id_anggota,
+        id_anggota: pinjaman.id_anggota,
         jenis: "cicilan",
         jumlah: jumlah,
-        tanggal,
-        saldo_akhir: anggota.saldo_simpanan,
       });
 
-      if (sisaPinjaman.sisa_pinjaman - jumlah === 0) {
+      if (
+        Number(cicilan?.total_cicilan || 0) + Number(jumlah) ===
+        Number(pinjaman.jumlah)
+      ) {
         await db("pinjaman")
           .update({ status: "lunas" })
-          .where("id", id_pinjaman);
+          .where("id_pinjaman", id_pinjaman);
       }
     } catch (error) {
       throw error;

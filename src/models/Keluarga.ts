@@ -40,12 +40,22 @@ class Keluarga {
         throw new Error("List anggota wajib diisi");
       }
 
-      const anggotaExists = await db("r_anggota")
+      const anggotaRows = await db("r_anggota")
         .whereIn("id", list_id_anggota)
-        .select("id");
+        .select("id", "nama", "id_keluarga");
 
-      if (anggotaExists.length !== list_id_anggota.length) {
+      if (anggotaRows.length !== list_id_anggota.length) {
         throw new Error("Beberapa anggota tidak ditemukan");
+      }
+
+      const sudahPunyaKeluarga = anggotaRows.filter(
+        (a) => a.id_keluarga !== null
+      );
+      if (sudahPunyaKeluarga.length > 0) {
+        const names = sudahPunyaKeluarga.map((a) => a.nama).join(", ");
+        throw new Error(
+          `Anggota berikut sudah terdaftar di keluarga lain: ${names}`
+        );
       }
 
       await db.transaction(async (trx) => {
@@ -82,12 +92,24 @@ class Keluarga {
 
         if (Array.isArray(list_id_anggota)) {
           if (list_id_anggota.length > 0) {
-            const anggotaExists = await trx("r_anggota")
+            const anggotaRows = await trx("r_anggota")
               .whereIn("id", list_id_anggota)
-              .select("id");
+              .select("id", "nama", "id_keluarga");
 
-            if (anggotaExists.length !== list_id_anggota.length) {
+            if (anggotaRows.length !== list_id_anggota.length) {
               throw new Error("Beberapa anggota tidak ditemukan");
+            }
+
+            const sudahPunyaKeluargaLain = anggotaRows.filter(
+              (a) => a.id_keluarga !== null && a.id_keluarga !== id
+            );
+            if (sudahPunyaKeluargaLain.length > 0) {
+              const names = sudahPunyaKeluargaLain
+                .map((a) => a.nama)
+                .join(", ");
+              throw new Error(
+                `Anggota berikut sudah terdaftar di keluarga lain: ${names}`
+              );
             }
           }
 

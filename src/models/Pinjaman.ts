@@ -1,7 +1,7 @@
 import db from "../../db";
 
 class Pinjaman {
-  static async getAll({ status = "proses" }: { status?: string }) {
+  static async getAll({ status }: { status?: string }) {
     try {
       const result = await db("pinjaman")
         .join("r_anggota", "pinjaman.id_anggota", "r_anggota.id")
@@ -30,13 +30,14 @@ class Pinjaman {
   static async getById(id: number) {
     try {
       const result = await db("pinjaman as p")
-        .join("cicilan as c", "p.id", "c.id_pinjaman")
+        .join("cicilan as c", "p.id_pinjaman", "c.id_pinjaman")
         .join("r_anggota as a", "p.id_anggota", "a.id")
         .select(
           "p.id_pinjaman",
           "p.keterangan",
           "p.status",
           "p.jumlah",
+          "p.createdAt",
           "a.nama as nama_anggota",
           {
             sisa: db.raw("p.jumlah - COALESCE(SUM(c.jumlah), 0)"),
