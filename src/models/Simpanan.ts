@@ -109,6 +109,13 @@ class Simpanan {
       throw error; // Rethrow the error for handling in the calling code
     }
   }
+
+  static async getTotalSimpanan(id: number) {
+    return await db("simpanan")
+      .where("id_anggota", id)
+      .sum("jumlah as total")
+      .first();
+  }
 }
 
 export default Simpanan;

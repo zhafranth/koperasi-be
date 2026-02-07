@@ -23,20 +23,33 @@ export const getAllAnggota = async (req: Request, res: Response) => {
 export const getDetailAnggota = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const anggota = await Anggota.getDetail(Number(id));
-    const simpanan = await Simpanan.getByUserId(Number(id));
-    const pinjaman = await Pinjaman.getByUserId(Number(id));
+
+    const [anggota, simpanan, pinjaman, jumlahSimpanan, jumlahPinjaman] =
+      await Promise.all([
+        Anggota.getDetail(Number(id)),
+        Simpanan.getByUserId(Number(id)),
+        Pinjaman.getByUserId(Number(id)),
+        Simpanan.getTotalSimpanan(Number(id)),
+        Pinjaman.getTotalPinjaman(Number(id)),
+      ]);
+
+    if (!anggota) {
+      res.status(404).json({ message: "Anggota tidak ditemukan" });
+    }
 
     res.json({
       data: {
         ...anggota,
-        jumlah_pinjaman: Number(anggota?.jumlah_pinjaman),
+        jumlah_simpanan: Number(jumlahSimpanan?.total || 0),
+        jumlah_pinjaman: Number(jumlahPinjaman?.total || 0),
         simpanan,
         pinjaman,
       },
       message: "Success get detail anggota",
     });
-  } catch (error) {
-    res.status(500).json({ message: "Internal Server Error" });
+  } catch (error: any) {
+    res
+      .status(error?.status || 500)
+      .json({ message: error?.message || "Internal Server Error" });
   }
 };

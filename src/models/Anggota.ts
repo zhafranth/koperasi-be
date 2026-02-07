@@ -36,13 +36,6 @@ class Anggota {
 
   static async getDetail(id: number) {
     const result = await db("r_anggota")
-      .leftJoin("pinjaman as p", function () {
-        this.on("r_anggota.id", "=", "p.id_anggota").andOnVal(
-          "p.status",
-          "=",
-          "disetujui",
-        );
-      })
       .select(
         "r_anggota.id",
         "r_anggota.nama",
@@ -55,7 +48,6 @@ class Anggota {
         "r_anggota.saldo_simpanan",
         "r_anggota.username",
       )
-      .sum({ jumlah_pinjaman: db.raw("COALESCE(p.jumlah, 0)") })
       .where("r_anggota.id", id)
       .first();
     return result;

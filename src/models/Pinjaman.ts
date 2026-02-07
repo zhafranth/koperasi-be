@@ -88,6 +88,13 @@ class Pinjaman {
       throw error;
     }
   }
+  static async getTotalPinjaman(id: number) {
+    return await db("pinjaman")
+      .where("id_anggota", id)
+      .where("status", "proses")
+      .sum("jumlah as total")
+      .first();
+  }
 }
 
 export default Pinjaman;
