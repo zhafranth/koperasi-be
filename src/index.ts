@@ -8,6 +8,7 @@ import transaksiRouter from "./routes/transaksiRoutes";
 import pinjamanRouter from "./routes/pinjamanRoutes";
 import cicilanRouter from "./routes/cicilanRoutes";
 import infaqRouter from "./routes/infaqRoutes";
+import keluargaRouter from "./routes/keluargaRoutes";
 
 import dotenv from "dotenv";
 import authenticateToken from "./middleware/authMiddleware";
@@ -29,6 +30,7 @@ app.use("/pinjaman", pinjamanRouter);
 app.use("/cicilan", cicilanRouter);
 app.use("/simpanan", authenticateToken, simpananRouter);
 app.use("/infaq", authenticateToken, infaqRouter);
+app.use("/keluarga", authenticateToken, keluargaRouter);
 app.use("/coba", (req, res) => {
   res.send("Hello B!tch");
 });

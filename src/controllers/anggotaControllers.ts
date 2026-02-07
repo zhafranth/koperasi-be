@@ -2,6 +2,7 @@ import Anggota from "../models/Anggota";
 import { Request, Response } from "express";
 import Simpanan from "../models/Simpanan";
 import Pinjaman from "../models/Pinjaman";
+import Keluarga from "../models/Keluarga";
 
 export const getAllAnggota = async (req: Request, res: Response) => {
   try {
@@ -17,6 +18,19 @@ export const getAllAnggota = async (req: Request, res: Response) => {
   } catch (error) {
     console.info(error);
     res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+export const updateAnggota = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const payload = req.body;
+    await Anggota.update(Number(id), payload);
+    res.json({ message: "Success update anggota" });
+  } catch (error: any) {
+    res
+      .status(500)
+      .json({ message: error?.message || "Internal Server Error" });
   }
 };
 
@@ -37,11 +51,17 @@ export const getDetailAnggota = async (req: Request, res: Response) => {
       res.status(404).json({ message: "Anggota tidak ditemukan" });
     }
 
+    let anggotaKeluarga: any[] = [];
+    if (anggota?.id_keluarga) {
+      anggotaKeluarga = await Keluarga.getListAnggota(anggota?.id_keluarga);
+    }
+
     res.json({
       data: {
         ...anggota,
         jumlah_simpanan: Number(jumlahSimpanan?.total || 0),
         jumlah_pinjaman: Number(jumlahPinjaman?.total || 0),
+        anggota_keluarga: anggotaKeluarga || [],
         simpanan,
         pinjaman,
       },
