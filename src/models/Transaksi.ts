@@ -52,33 +52,33 @@ class Transaksi {
     };
   }
   static async getTotalTransaksi() {
-    try {
-      const total = await db("transaksi")
-        .select({
-          jumlah_dana: db("transaksi").sum("jumlah"),
-          jumlah_pinjaman: db("transaksi")
-            .sum("jumlah")
-            .where("jenis", "pinjaman"),
-          total_dana: db("transaksi")
-            .sum("jumlah")
-            .where("jenis", "!=", "pinjaman"),
-        })
-        .first();
-      if (!total) {
-        return {
-          jumlah_dana: 0,
-          jumlah_pinjaman: 0,
-          total_dana: 0,
-        };
-      }
-      return {
-        jumlah_dana: Number(total.jumlah_dana || 0),
-        jumlah_pinjaman: Number(total.jumlah_pinjaman || 0),
-        total_dana: Number(total.total_dana || 0),
-      };
-    } catch (error) {
-      console.log(error);
-    }
+    const [simpanan, infaqMasuk, sukarela, cicilan, liburan, pinjaman, penarikan, anggotaCount] =
+      await Promise.all([
+        db("simpanan").sum("jumlah as total").first(),
+        db("infaq").where("jenis", "masuk").sum("jumlah as total").first(),
+        db("simpanan_sukarela").sum("jumlah as total").first(),
+        db("cicilan").sum("jumlah as total").first(),
+        db("tabungan_liburan").sum("jumlah as total").first(),
+        db("pinjaman").where("status", "proses").sum("jumlah as total").first(),
+        db("penarikan").sum("jumlah as total").first(),
+        db("r_anggota").count("id as total").first(),
+      ]);
+
+    const jumlahDana =
+      Number(simpanan?.total || 0) +
+      Number(infaqMasuk?.total || 0) +
+      Number(sukarela?.total || 0) +
+      Number(cicilan?.total || 0) +
+      Number(liburan?.total || 0);
+
+    return {
+      total_anggota: Number(anggotaCount?.total || 0),
+      jumlah_dana: jumlahDana,
+      jumlah_pinjaman: Number(pinjaman?.total || 0),
+      jumlah_simpanan_sukarela: Number(sukarela?.total || 0),
+      jumlah_tabungan_liburan: Number(liburan?.total || 0),
+      total_dana: jumlahDana - Number(penarikan?.total || 0),
+    };
   }
 }
 

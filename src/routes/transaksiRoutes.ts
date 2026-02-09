@@ -7,6 +7,6 @@ import authenticateToken from "../middleware/authMiddleware";
 
 const router = Router();
 router.get("/", authenticateToken, getAllTransaksi);
-router.get("/total", authenticateToken, getJumlahTransaksi);
+router.get("/total", getJumlahTransaksi);
 
 export default router;
