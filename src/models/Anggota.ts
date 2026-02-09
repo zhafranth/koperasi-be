@@ -89,7 +89,7 @@ class Anggota {
         "no_telepon",
         "email",
         "id_keluarga",
-        "tipe_keanggotaan",
+        "role",
         "status",
       ];
 

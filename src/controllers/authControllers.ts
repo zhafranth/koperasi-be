@@ -45,12 +45,41 @@ export const login = async (req: Request, res: Response) => {
     }
 
     const token = jwt.sign(
-      { id: anggota.id, username: anggota.username },
+      { id: anggota.id, username: anggota.username, role: anggota.role || "anggota" },
       process.env.JWT_SECRET as string,
       { expiresIn: "1h" },
     );
 
     res.json({ token });
+  } catch (error) {
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const getMe = async (req: any, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+
+    const anggota = await db("r_anggota")
+      .where("id", userId)
+      .select("id", "nama", "username", "role", "email", "no_telepon")
+      .first();
+
+    if (!anggota) {
+      res.status(404).json({ message: "User tidak ditemukan" });
+      return;
+    }
+
+    res.json({
+      data: {
+        ...anggota,
+        role: anggota.role || "anggota",
+      },
+    });
   } catch (error) {
     res.status(500).json({ message: "Internal server error" });
   }

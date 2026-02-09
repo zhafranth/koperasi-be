@@ -23,21 +23,23 @@ Database: `koperasi_db` (MySQL)
 │ id (PK)                                 │
 │ id_keluarga (FK) ───────────────────────┘
 │ nama, nik, alamat, no_telepon, email    │
-│ tipe_keanggotaan, tgl_gabung, status    │
+│ role, tgl_gabung, status                │
 │ username, password, saldo_simpanan      │
 └───────────────┬─────────────────────────┘
                 │
-    ┌───────────┼───────────┬──────────────┬──────────────┬──────────────┐
-    │           │           │              │              │              │
-    ▼           ▼           ▼              ▼              ▼              ▼
-┌────────┐ ┌────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐
-│simpanan│ │pinjaman│ │transaksi │ │ pengurus │ │  infaq   │ │penarikan │
-└────────┘ └───┬────┘ └──────────┘ └──────────┘ └──────────┘ └──────────┘
-               │
-               ▼
-          ┌────────┐
-          │cicilan │
-          └────────┘
+    ┌───────┬───┼───────┬──────────┬──────────┬──────────┬──────────┐
+    │       │   │       │          │          │          │          │
+    ▼       ▼   ▼       ▼          ▼          ▼          ▼          ▼
+┌───────┐┌───────┐┌────────┐┌────────┐┌────────┐┌─────────┐┌────────┐┌────────┐
+│simpan-││pinja- ││transak-││pengurus││ infaq  ││penari-  ││simpan- ││tabung- │
+│an     ││man    ││si      ││        ││        ││kan      ││an_suka-││an_libu-│
+│       ││       ││        ││        ││        ││(sumber) ││rela    ││ran     │
+└───────┘└──┬────┘└────────┘└────────┘└────────┘└─────────┘└────────┘└────────┘
+            │
+            ▼
+       ┌────────┐
+       │cicilan │
+       └────────┘
 ```
 
 ## Tables
@@ -69,7 +71,7 @@ Menyimpan data anggota koperasi.
 | alamat | text | YES | | NULL | Alamat lengkap |
 | no_telepon | varchar(15) | YES | | NULL | Nomor telepon |
 | email | varchar(100) | YES | | NULL | Alamat email |
-| tipe_keanggotaan | varchar(100) | YES | | NULL | Tipe keanggotaan |
+| role | enum('pengurus','anggota') | YES | | 'anggota' | Role keanggotaan |
 | tgl_gabung | datetime | YES | | CURRENT_TIMESTAMP | Tanggal bergabung |
 | status | enum('aktif','non-aktif') | NO | | NULL | Status keanggotaan |
 | username | varchar(50) | YES | UNI | NULL | Username untuk login |
@@ -198,7 +200,7 @@ Menyimpan catatan infaq/donasi.
 
 ### 9. penarikan (Withdrawals)
 
-Menyimpan catatan penarikan simpanan.
+Menyimpan catatan penarikan dari berbagai sumber dana. Penarikan simpanan & liburan untuk pribadi anggota, penarikan sukarela & infaq untuk kebutuhan koperasi.
 
 | Column | Type | Nullable | Key | Default | Description |
 |--------|------|----------|-----|---------|-------------|
@@ -207,9 +209,60 @@ Menyimpan catatan penarikan simpanan.
 | id_anggota | int(11) | NO | FK | NULL | Referensi ke anggota |
 | tanggal | datetime | YES | | CURRENT_TIMESTAMP | Tanggal penarikan |
 | tahun | varchar(6) | YES | | NULL | Tahun penarikan |
+| sumber | enum('simpanan','sukarela','infaq','liburan') | NO | | 'simpanan' | Sumber dana penarikan |
+| keterangan | text | YES | | NULL | Keterangan penarikan |
 
 **Foreign Keys:**
 - `id_anggota` → `r_anggota.id`
+
+**Business Rules:**
+- Sumber `simpanan` & `liburan` → penarikan untuk pribadi anggota
+- Sumber `sukarela` & `infaq` → penarikan untuk kebutuhan koperasi
+- Tidak ada approval, langsung diproses
+
+---
+
+### 10. simpanan_sukarela (Voluntary Savings)
+
+Menyimpan catatan kontribusi sukarela anggota. Dana dapat ditarik untuk kebutuhan koperasi.
+
+| Column | Type | Nullable | Key | Default | Description |
+|--------|------|----------|-----|---------|-------------|
+| id | int(11) | NO | PK | auto_increment | ID unik simpanan sukarela |
+| id_anggota | int(11) | NO | FK | NULL | Referensi ke anggota |
+| jumlah | decimal(15,2) | NO | | NULL | Jumlah kontribusi |
+| tanggal | datetime | NO | | CURRENT_TIMESTAMP | Tanggal kontribusi |
+| keterangan | text | YES | | NULL | Keterangan |
+| createdAt | datetime | YES | | CURRENT_TIMESTAMP | Tanggal dibuat |
+
+**Foreign Keys:**
+- `id_anggota` → `r_anggota.id`
+
+**Business Rules:**
+- Tidak dihitung dalam batas 80% pinjaman keluarga
+- Penarikan melalui tabel `penarikan` dengan sumber='sukarela'
+
+---
+
+### 11. tabungan_liburan (Holiday Savings)
+
+Menyimpan catatan tabungan anggota yang diperuntukan untuk liburan.
+
+| Column | Type | Nullable | Key | Default | Description |
+|--------|------|----------|-----|---------|-------------|
+| id | int(11) | NO | PK | auto_increment | ID unik tabungan liburan |
+| id_anggota | int(11) | NO | FK | NULL | Referensi ke anggota |
+| jumlah | decimal(15,2) | NO | | NULL | Jumlah setoran |
+| tanggal | datetime | NO | | CURRENT_TIMESTAMP | Tanggal setoran |
+| keterangan | text | YES | | NULL | Keterangan |
+| createdAt | datetime | YES | | CURRENT_TIMESTAMP | Tanggal dibuat |
+
+**Foreign Keys:**
+- `id_anggota` → `r_anggota.id`
+
+**Business Rules:**
+- Tidak dihitung dalam batas 80% pinjaman keluarga
+- Penarikan melalui tabel `penarikan` dengan sumber='liburan'
 
 ---
 
@@ -225,10 +278,12 @@ Menyimpan catatan penarikan simpanan.
 | pengurus | id_anggota | r_anggota.id |
 | infaq | id_anggota | r_anggota.id |
 | penarikan | id_anggota | r_anggota.id |
+| simpanan_sukarela | id_anggota | r_anggota.id |
+| tabungan_liburan | id_anggota | r_anggota.id |
 
 ---
 
-### 10. events (Events/Kegiatan)
+### 12. events (Events/Kegiatan)
 
 Menyimpan data event/kegiatan koperasi.
 

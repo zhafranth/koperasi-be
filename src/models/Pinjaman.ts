@@ -57,18 +57,68 @@ class Pinjaman {
     return await db("cicilan").where("id_pinjaman", id);
   }
 
+  static async getLimitKeluarga(idAnggota: number) {
+    const anggota = await db("r_anggota").where("id", idAnggota).first();
+    if (!anggota) {
+      throw new Error("Anggota tidak ditemukan");
+    }
+
+    if (!anggota.id_keluarga) {
+      throw new Error("Anggota belum terdaftar dalam keluarga");
+    }
+
+    // Total simpanan wajib seluruh anggota keluarga
+    const totalSimpananKeluarga = await db("r_anggota")
+      .where("id_keluarga", anggota.id_keluarga)
+      .sum("saldo_simpanan as total")
+      .first();
+
+    const simpananKeluarga = Number(totalSimpananKeluarga?.total || 0);
+    const maxPinjaman = Math.floor(simpananKeluarga * 0.8);
+
+    // Total pinjaman aktif seluruh anggota keluarga
+    const anggotaKeluarga = await db("r_anggota")
+      .where("id_keluarga", anggota.id_keluarga)
+      .select("id");
+    const anggotaIds = anggotaKeluarga.map((a: any) => a.id);
+
+    const totalPinjamanAktif = await db("pinjaman")
+      .whereIn("id_anggota", anggotaIds)
+      .where("status", "proses")
+      .sum("jumlah as total")
+      .first();
+
+    const pinjamanAktif = Number(totalPinjamanAktif?.total || 0);
+    const sisaLimit = maxPinjaman - pinjamanAktif;
+
+    return {
+      simpanan_keluarga: simpananKeluarga,
+      max_pinjaman: maxPinjaman,
+      pinjaman_aktif: pinjamanAktif,
+      sisa_limit: Math.max(sisaLimit, 0),
+    };
+  }
+
   static async create(payload: any) {
     try {
       const { id_anggota, jumlah, keterangan } = payload;
       const anggota = await db("r_anggota").where("id", id_anggota).first();
 
-      const totalPinjaman = await db("pinjaman")
-        .where("id_anggota", id_anggota)
-        .where("status", "disetujui")
-        .sum("jumlah as total");
-
       if (!anggota) {
-        throw new Error("User not found");
+        throw new Error("Anggota tidak ditemukan");
+      }
+
+      if (!anggota.id_keluarga) {
+        throw new Error("Anggota belum terdaftar dalam keluarga");
+      }
+
+      // Validasi limit pinjaman keluarga (80% simpanan wajib)
+      const limit = await this.getLimitKeluarga(id_anggota);
+
+      if (Number(jumlah) > limit.sisa_limit) {
+        throw new Error(
+          `Jumlah pinjaman melebihi limit keluarga. Sisa limit: ${limit.sisa_limit} (80% simpanan keluarga: ${limit.max_pinjaman}, pinjaman aktif: ${limit.pinjaman_aktif})`
+        );
       }
 
       const data = {
