@@ -52,17 +52,25 @@ class Transaksi {
     };
   }
   static async getTotalTransaksi() {
-    const [simpanan, infaqMasuk, sukarela, cicilan, liburan, pinjaman, penarikan, anggotaCount] =
-      await Promise.all([
-        db("simpanan").sum("jumlah as total").first(),
-        db("infaq").where("jenis", "masuk").sum("jumlah as total").first(),
-        db("simpanan_sukarela").sum("jumlah as total").first(),
-        db("cicilan").sum("jumlah as total").first(),
-        db("tabungan_liburan").sum("jumlah as total").first(),
-        db("pinjaman").where("status", "proses").sum("jumlah as total").first(),
-        db("penarikan").sum("jumlah as total").first(),
-        db("r_anggota").count("id as total").first(),
-      ]);
+    const [
+      simpanan,
+      infaqMasuk,
+      sukarela,
+      cicilan,
+      liburan,
+      pinjaman,
+      penarikan,
+      anggotaCount,
+    ] = await Promise.all([
+      db("simpanan").sum("jumlah as total").first(),
+      db("infaq").where("jenis", "masuk").sum("jumlah as total").first(),
+      db("simpanan_sukarela").sum("jumlah as total").first(),
+      db("cicilan").sum("jumlah as total").first(),
+      db("tabungan_liburan").sum("jumlah as total").first(),
+      db("pinjaman").where("status", "proses").sum("jumlah as total").first(),
+      db("penarikan").sum("jumlah as total").first(),
+      db("r_anggota").count("id as total").first(),
+    ]);
 
     const jumlahDana =
       Number(simpanan?.total || 0) +
@@ -70,6 +78,13 @@ class Transaksi {
       Number(sukarela?.total || 0) +
       Number(cicilan?.total || 0) +
       Number(liburan?.total || 0);
+
+    console.log("jumlah_dana", jumlahDana);
+    console.log("sukarela", sukarela);
+    console.log("infaqMasuk", infaqMasuk);
+    console.log("liburan", liburan);
+    console.log("cicilan", cicilan);
+    console.log("simpanan", simpanan);
 
     return {
       total_anggota: Number(anggotaCount?.total || 0),

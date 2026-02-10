@@ -67,20 +67,20 @@ class Pinjaman {
       throw new Error("Anggota belum terdaftar dalam keluarga");
     }
 
-    // Total simpanan wajib seluruh anggota keluarga
-    const totalSimpananKeluarga = await db("r_anggota")
-      .where("id_keluarga", anggota.id_keluarga)
-      .sum("saldo_simpanan as total")
-      .first();
-
-    const simpananKeluarga = Number(totalSimpananKeluarga?.total || 0);
-    const maxPinjaman = Math.floor(simpananKeluarga * 0.8);
-
-    // Total pinjaman aktif seluruh anggota keluarga
+    // Ambil ID seluruh anggota keluarga
     const anggotaKeluarga = await db("r_anggota")
       .where("id_keluarga", anggota.id_keluarga)
       .select("id");
     const anggotaIds = anggotaKeluarga.map((a: any) => a.id);
+
+    // Total simpanan wajib seluruh anggota keluarga (dari table simpanan)
+    const totalSimpananKeluarga = await db("simpanan")
+      .whereIn("id_anggota", anggotaIds)
+      .sum("jumlah as total")
+      .first();
+
+    const simpananKeluarga = Number(totalSimpananKeluarga?.total || 0);
+    const maxPinjaman = Math.floor(simpananKeluarga * 0.8);
 
     const totalPinjamanAktif = await db("pinjaman")
       .whereIn("id_anggota", anggotaIds)
@@ -117,7 +117,7 @@ class Pinjaman {
 
       if (Number(jumlah) > limit.sisa_limit) {
         throw new Error(
-          `Jumlah pinjaman melebihi limit keluarga. Sisa limit: ${limit.sisa_limit} (80% simpanan keluarga: ${limit.max_pinjaman}, pinjaman aktif: ${limit.pinjaman_aktif})`
+          `Jumlah pinjaman melebihi limit keluarga. Sisa limit: ${limit.sisa_limit} (80% simpanan keluarga: ${limit.max_pinjaman}, pinjaman aktif: ${limit.pinjaman_aktif})`,
         );
       }
 

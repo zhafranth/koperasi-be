@@ -25,7 +25,11 @@ class Anggota {
         "r_anggota.id_keluarga",
         "k.nama_kepala_keluarga",
         "r_anggota.no_telepon",
-        "r_anggota.saldo_simpanan",
+        {
+          total_simpanan: db.raw(
+            "COALESCE((SELECT SUM(s.jumlah) FROM simpanan s WHERE s.id_anggota = r_anggota.id), 0)",
+          ),
+        },
       )
       .sum({ jumlah_pinjaman: db.raw("COALESCE(p.jumlah, 0)") })
       .groupBy(
@@ -35,7 +39,6 @@ class Anggota {
         "r_anggota.id_keluarga",
         "k.nama_kepala_keluarga",
         "r_anggota.no_telepon",
-        "r_anggota.saldo_simpanan",
       );
 
     return result;
@@ -55,7 +58,11 @@ class Anggota {
         "r_anggota.email",
         "r_anggota.tgl_gabung",
         "r_anggota.status",
-        "r_anggota.saldo_simpanan",
+        {
+          total_simpanan: db.raw(
+            "COALESCE((SELECT SUM(s.jumlah) FROM simpanan s WHERE s.id_anggota = r_anggota.id), 0)",
+          ),
+        },
         "r_anggota.username",
         "r_anggota.id_keluarga",
         "k.nama_kepala_keluarga",
@@ -71,7 +78,7 @@ class Anggota {
         throw new Error("Anggota tidak ditemukan");
       }
 
-      const { username, password, saldo_simpanan, id: _id, ...rest } = payload;
+      const { username, password, id: _id, ...rest } = payload;
 
       if (rest.id_keluarga) {
         const keluarga = await db("r_keluarga")

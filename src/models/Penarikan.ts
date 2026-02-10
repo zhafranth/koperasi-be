@@ -51,11 +51,17 @@ class Penarikan {
   static async getSaldo(idAnggota: number, sumber: Sumber) {
     switch (sumber) {
       case "simpanan": {
-        const anggota = await db("r_anggota")
-          .where("id", idAnggota)
-          .select("saldo_simpanan")
-          .first();
-        return Number(anggota?.saldo_simpanan || 0);
+        const totalSetor = await db("simpanan")
+          .where("id_anggota", idAnggota)
+          .sum("jumlah as total");
+        const totalTarik = await db("penarikan")
+          .where("id_anggota", idAnggota)
+          .where("sumber", "simpanan")
+          .sum("jumlah as total");
+        return (
+          Number(totalSetor[0]?.total || 0) -
+          Number(totalTarik[0]?.total || 0)
+        );
       }
 
       case "sukarela": {
@@ -159,13 +165,6 @@ class Penarikan {
         keterangan: keterangan || null,
       });
 
-      // Update saldo_simpanan jika sumber = simpanan
-      if (sumber === "simpanan") {
-        await trx("r_anggota")
-          .where("id", id_anggota)
-          .decrement("saldo_simpanan", Number(jumlah));
-      }
-
       await trx("transaksi").insert({
         id_anggota,
         jenis: "lainnya",
@@ -182,16 +181,7 @@ class Penarikan {
       throw new Error("Penarikan tidak ditemukan");
     }
 
-    await db.transaction(async (trx) => {
-      // Kembalikan saldo jika sumber = simpanan
-      if (existing.sumber === "simpanan") {
-        await trx("r_anggota")
-          .where("id", existing.id_anggota)
-          .increment("saldo_simpanan", Number(existing.jumlah));
-      }
-
-      await trx("penarikan").where("id", id).delete();
-    });
+    await db("penarikan").where("id", id).delete();
   }
 }
 

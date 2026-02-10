@@ -116,6 +116,24 @@ class Simpanan {
       .sum("jumlah as total")
       .first();
   }
+
+  static async getChartData(tahun: number) {
+    const rows = await db("simpanan")
+      .where("tahun", String(tahun))
+      .groupBy("bulan")
+      .select("bulan")
+      .sum("jumlah as total")
+      .orderBy("bulan", "asc");
+
+    const rowMap = new Map(
+      rows.map((r: any) => [Number(r.bulan), Number(r.total)]),
+    );
+
+    return Array.from({ length: 12 }, (_, i) => ({
+      bulan: i + 1,
+      total: rowMap.get(i + 1) || 0,
+    }));
+  }
 }
 
 export default Simpanan;

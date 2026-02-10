@@ -24,7 +24,7 @@ Database: `koperasi_db` (MySQL)
 │ id_keluarga (FK) ───────────────────────┘
 │ nama, nik, alamat, no_telepon, email    │
 │ role, tgl_gabung, status                │
-│ username, password, saldo_simpanan      │
+│ username, password                      │
 └───────────────┬─────────────────────────┘
                 │
     ┌───────┬───┼───────┬──────────┬──────────┬──────────┬──────────┐
@@ -76,7 +76,6 @@ Menyimpan data anggota koperasi.
 | status | enum('aktif','non-aktif') | NO | | NULL | Status keanggotaan |
 | username | varchar(50) | YES | UNI | NULL | Username untuk login |
 | password | varchar(255) | YES | | NULL | Password (hashed) |
-| saldo_simpanan | int(11) | YES | | 0 | Saldo simpanan saat ini |
 
 **Foreign Keys:**
 - `id_keluarga` → `r_keluarga.id_keluarga`
@@ -120,7 +119,7 @@ Menyimpan data pengajuan pinjaman anggota.
 - `id_anggota` → `r_anggota.id`
 
 **Business Rules:**
-- Pinjaman maksimal 80% dari saldo_simpanan dikurangi pinjaman aktif
+- Pinjaman maksimal 80% dari total simpanan keluarga (SUM dari tabel simpanan) dikurangi pinjaman aktif
 - Status 'proses' = sedang berjalan, 'lunas' = sudah dilunasi
 
 ---

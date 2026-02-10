@@ -16,6 +16,7 @@ import penarikanRouter from "./routes/penarikanRoutes";
 
 import dotenv from "dotenv";
 import authenticateToken from "./middleware/authMiddleware";
+import { getChartSimpanan } from "./controllers/simpananControllers";
 
 dotenv.config();
 
@@ -32,9 +33,10 @@ app.use("/pengurus", pengurusRouter);
 app.use("/transaksi", transaksiRouter);
 app.use("/pinjaman", pinjamanRouter);
 app.use("/cicilan", cicilanRouter);
+app.get("/simpanan/chart", getChartSimpanan);
 app.use("/simpanan", authenticateToken, simpananRouter);
 app.use("/infaq", authenticateToken, infaqRouter);
-app.use("/keluarga", authenticateToken, keluargaRouter);
+app.use("/keluarga", keluargaRouter);
 app.use("/event", eventRouter);
 app.use("/simpanan-sukarela", simpananSukarelaRouter);
 app.use("/tabungan-liburan", tabunganLiburanRouter);

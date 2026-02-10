@@ -12,20 +12,111 @@ class Keluarga {
       .orderBy("created_date", "desc");
 
     const anggotaList = await db("r_anggota")
-      .whereNotNull("id_keluarga")
-      .select("id", "id_keluarga", "nama", "nik", "no_telepon", "status");
+      .leftJoin("pinjaman as p", function () {
+        this.on("r_anggota.id", "=", "p.id_anggota").andOnVal(
+          "p.status",
+          "=",
+          "proses",
+        );
+      })
+      .whereNotNull("r_anggota.id_keluarga")
+      .select(
+        "r_anggota.id",
+        "r_anggota.id_keluarga",
+        "r_anggota.nama",
+        "r_anggota.nik",
+        "r_anggota.no_telepon",
+        "r_anggota.status",
+      )
+      .sum({ jumlah_pinjaman: db.raw("COALESCE(p.jumlah, 0)") })
+      .groupBy(
+        "r_anggota.id",
+        "r_anggota.id_keluarga",
+        "r_anggota.nama",
+        "r_anggota.nik",
+        "r_anggota.no_telepon",
+        "r_anggota.status",
+      );
+
+    const anggotaIds = anggotaList.map((a: any) => a.id);
+
+    const [simpananRows, sukarelaRows, liburanRows] = await Promise.all([
+      anggotaIds.length > 0
+        ? db("simpanan")
+            .whereIn("id_anggota", anggotaIds)
+            .groupBy("id_anggota")
+            .select("id_anggota")
+            .sum("jumlah as total")
+        : [],
+      anggotaIds.length > 0
+        ? db("simpanan_sukarela")
+            .whereIn("id_anggota", anggotaIds)
+            .groupBy("id_anggota")
+            .select("id_anggota")
+            .sum("jumlah as total")
+        : [],
+      anggotaIds.length > 0
+        ? db("tabungan_liburan")
+            .whereIn("id_anggota", anggotaIds)
+            .groupBy("id_anggota")
+            .select("id_anggota")
+            .sum("jumlah as total")
+        : [],
+    ]);
+
+    const simpananMap = new Map(
+      (simpananRows as any[]).map((r) => [r.id_anggota, Number(r.total)]),
+    );
+    const sukarelaMap = new Map(
+      (sukarelaRows as any[]).map((r) => [r.id_anggota, Number(r.total)]),
+    );
+    const liburanMap = new Map(
+      (liburanRows as any[]).map((r) => [r.id_anggota, Number(r.total)]),
+    );
 
     const anggotaMap = new Map<number, any[]>();
     for (const anggota of anggotaList) {
-      const list = anggotaMap.get(anggota.id_keluarga) || [];
-      list.push(anggota);
-      anggotaMap.set(anggota.id_keluarga, list);
+      const a = anggota as any;
+      const entry = {
+        id: a.id,
+        id_keluarga: a.id_keluarga,
+        nama: a.nama,
+        nik: a.nik,
+        no_telepon: a.no_telepon,
+        status: a.status,
+        total_simpanan: simpananMap.get(a.id) || 0,
+        jumlah_pinjaman: Number(a.jumlah_pinjaman) || 0,
+        jumlah_sukarela: sukarelaMap.get(a.id) || 0,
+        jumlah_tabungan_liburan: liburanMap.get(a.id) || 0,
+      };
+      const list = anggotaMap.get(a.id_keluarga) || [];
+      list.push(entry);
+      anggotaMap.set(a.id_keluarga, list);
     }
 
-    return keluargaList.map((keluarga) => ({
-      ...keluarga,
-      anggota: anggotaMap.get(keluarga.id_keluarga) || [],
-    }));
+    return keluargaList.map((keluarga) => {
+      const anggota = anggotaMap.get(keluarga.id_keluarga) || [];
+      let total_simpanan = 0;
+      let total_pinjaman = 0;
+      let total_sukarela = 0;
+      let total_tabungan_liburan = 0;
+
+      for (const a of anggota) {
+        total_simpanan += a.total_simpanan;
+        total_pinjaman += a.jumlah_pinjaman;
+        total_sukarela += a.jumlah_sukarela;
+        total_tabungan_liburan += a.jumlah_tabungan_liburan;
+      }
+
+      return {
+        ...keluarga,
+        total_simpanan,
+        total_pinjaman,
+        total_sukarela,
+        total_tabungan_liburan,
+        anggota,
+      };
+    });
   }
 
   static async create(payload: any) {

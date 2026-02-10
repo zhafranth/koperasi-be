@@ -5,12 +5,13 @@ import {
   updateKeluarga,
   deleteKeluarga,
 } from "../controllers/keluargaControllers";
+import authenticateToken from "../middleware/authMiddleware";
 
 const router = Router();
 
 router.get("/", getAllKeluarga);
-router.post("/", createKeluarga);
-router.put("/:id", updateKeluarga);
-router.delete("/:id", deleteKeluarga);
+router.post("/", authenticateToken, createKeluarga);
+router.put("/:id", authenticateToken, updateKeluarga);
+router.delete("/:id", authenticateToken, deleteKeluarga);
 
 export default router;
