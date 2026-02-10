@@ -64,7 +64,7 @@ class TabunganLiburan {
 
       await trx("transaksi").insert({
         id_anggota,
-        jenis: "lainnya",
+        jenis: "liburan",
         jumlah: Number(jumlah),
         keterangan: keterangan || "Tabungan liburan",
       });

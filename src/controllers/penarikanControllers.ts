@@ -35,13 +35,19 @@ export const getSaldoPenarikan = async (req: Request, res: Response) => {
   try {
     const { id_anggota, sumber } = req.query;
 
-    if (!id_anggota || !sumber) {
-      res.status(400).json({ message: "id_anggota dan sumber harus diisi" });
+    if (!sumber) {
+      res.status(400).json({ message: "sumber harus diisi" });
+      return;
+    }
+
+    const sumberKoperasi = ["infaq", "sukarela"];
+    if (!sumberKoperasi.includes(sumber as string) && !id_anggota) {
+      res.status(400).json({ message: "id_anggota harus diisi untuk sumber ini" });
       return;
     }
 
     const saldo = await Penarikan.getSaldo(
-      Number(id_anggota),
+      sumberKoperasi.includes(sumber as string) ? null : Number(id_anggota),
       sumber as "simpanan" | "sukarela" | "infaq" | "liburan"
     );
 

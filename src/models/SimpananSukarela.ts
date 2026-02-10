@@ -64,7 +64,7 @@ class SimpananSukarela {
 
       await trx("transaksi").insert({
         id_anggota,
-        jenis: "lainnya",
+        jenis: "sukarela",
         jumlah: Number(jumlah),
         keterangan: keterangan || "Simpanan sukarela",
       });

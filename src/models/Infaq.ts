@@ -63,7 +63,7 @@ class Infaq {
         });
         await trx("transaksi").insert({
           id_anggota: id_anggota || null,
-          jenis: "lainnya",
+          jenis: "infaq",
           jumlah: finalJumlah,
           keterangan: keterangan || `Infaq ${jenis || "masuk"}`,
         });

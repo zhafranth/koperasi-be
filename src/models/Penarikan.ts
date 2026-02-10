@@ -2,6 +2,8 @@ import db from "../../db";
 
 type Sumber = "simpanan" | "sukarela" | "infaq" | "liburan";
 
+const SUMBER_KOPERASI: Sumber[] = ["infaq", "sukarela"];
+
 class Penarikan {
   static async getAll(query?: { sumber?: string }) {
     const q = db("penarikan as p")
@@ -48,7 +50,7 @@ class Penarikan {
     return data;
   }
 
-  static async getSaldo(idAnggota: number, sumber: Sumber) {
+  static async getSaldo(idAnggota: number | null, sumber: Sumber) {
     switch (sumber) {
       case "simpanan": {
         const totalSetor = await db("simpanan")
@@ -66,10 +68,8 @@ class Penarikan {
 
       case "sukarela": {
         const totalSetor = await db("simpanan_sukarela")
-          .where("id_anggota", idAnggota)
           .sum("jumlah as total");
         const totalTarik = await db("penarikan")
-          .where("id_anggota", idAnggota)
           .where("sumber", "sukarela")
           .sum("jumlah as total");
         return (
@@ -117,10 +117,6 @@ class Penarikan {
   static async create(payload: any) {
     const { id_anggota, jumlah, sumber, keterangan } = payload;
 
-    if (!id_anggota) {
-      throw new Error("Anggota harus dipilih");
-    }
-
     if (!jumlah || Number(jumlah) <= 0) {
       throw new Error("Jumlah tidak valid");
     }
@@ -130,14 +126,22 @@ class Penarikan {
       throw new Error("Sumber penarikan tidak valid");
     }
 
-    const anggota = await db("r_anggota").where("id", id_anggota).first();
-    if (!anggota) {
-      throw new Error("Anggota tidak ditemukan");
+    const isSumberKoperasi = SUMBER_KOPERASI.includes(sumber);
+
+    // Untuk simpanan & liburan, anggota wajib dipilih
+    if (!isSumberKoperasi) {
+      if (!id_anggota) {
+        throw new Error("Anggota harus dipilih");
+      }
+      const anggota = await db("r_anggota").where("id", id_anggota).first();
+      if (!anggota) {
+        throw new Error("Anggota tidak ditemukan");
+      }
     }
 
-    // Validasi saldo — infaq dicek global, lainnya per anggota
+    // Validasi saldo
     const saldo = await this.getSaldo(
-      sumber === "infaq" ? 0 : id_anggota,
+      isSumberKoperasi ? null : id_anggota,
       sumber
     );
 
@@ -157,7 +161,7 @@ class Penarikan {
 
     await db.transaction(async (trx) => {
       await trx("penarikan").insert({
-        id_anggota,
+        id_anggota: isSumberKoperasi ? null : id_anggota,
         jumlah: Number(jumlah),
         tanggal: now,
         tahun: String(now.getFullYear()),
@@ -166,11 +170,10 @@ class Penarikan {
       });
 
       await trx("transaksi").insert({
-        id_anggota,
-        jenis: "lainnya",
+        id_anggota: isSumberKoperasi ? null : id_anggota,
+        jenis: "penarikan",
         jumlah: Number(jumlah) * -1,
-        keterangan:
-          keterangan || `Penarikan ${sumber}`,
+        keterangan: keterangan || `Penarikan ${sumber}`,
       });
     });
   }
@@ -181,7 +184,16 @@ class Penarikan {
       throw new Error("Penarikan tidak ditemukan");
     }
 
-    await db("penarikan").where("id", id).delete();
+    await db.transaction(async (trx) => {
+      await trx("penarikan").where("id", id).delete();
+
+      await trx("transaksi").insert({
+        id_anggota: existing.id_anggota || null,
+        jenis: "penarikan",
+        jumlah: Number(existing.jumlah),
+        keterangan: `Pembatalan penarikan ${existing.sumber}`,
+      });
+    });
   }
 }
 
