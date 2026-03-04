@@ -133,6 +133,7 @@ class Pinjaman {
           id_anggota,
           jenis: "pinjaman",
           jumlah: jumlah * -1,
+          keterangan,
         });
       });
     } catch (error) {

@@ -99,6 +99,7 @@ class Simpanan {
             id_anggota,
             jenis: "simpanan",
             jumlah: amount,
+            keterangan: `Simpanan bulan ${String(bulan).padStart(2, "0")}-${tahun}`,
           };
 
           await trx("simpanan").insert(simpananData);

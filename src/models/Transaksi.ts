@@ -103,8 +103,8 @@ class Transaksi {
       jumlahDana +
       Number(jumlah_infaq) +
       Number(jumlah_tabungan_liburan) +
-      Number(jumlah_simpanan_sukarela) -
-      (Number(penarikan?.total || 0) + Number(pinjaman?.total || 0));
+      (Number(jumlah_simpanan_sukarela) -
+        (Number(penarikan?.total || 0) + Number(pinjaman?.total || 0)));
 
     return {
       total_anggota: Number(anggotaCount?.total || 0),
