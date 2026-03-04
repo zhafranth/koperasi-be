@@ -37,4 +37,4 @@ jobs:
             yarn install
             yarn migrate     # pastikan ini script-nya ada di package.json
             yarn build
-            pm2 restart koperasi-be
+            /home/admincode/.npm-global/bin/pm2 restart koperasi-be
