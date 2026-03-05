@@ -13,6 +13,7 @@ import eventRouter from "./routes/eventRoutes";
 import simpananSukarelaRouter from "./routes/simpananSukarelaRoutes";
 import tabunganLiburanRouter from "./routes/tabunganLiburanRoutes";
 import penarikanRouter from "./routes/penarikanRoutes";
+import danaKoperasiRouter from "./routes/danaKoperasiRoutes";
 
 import dotenv from "dotenv";
 import authenticateToken from "./middleware/authMiddleware";
@@ -41,6 +42,7 @@ app.use("/event", eventRouter);
 app.use("/simpanan-sukarela", simpananSukarelaRouter);
 app.use("/tabungan-liburan", tabunganLiburanRouter);
 app.use("/penarikan", penarikanRouter);
+app.use("/dana-koperasi", danaKoperasiRouter);
 app.use("/coba", (req, res) => {
   res.send("Hello B!tch");
 });
