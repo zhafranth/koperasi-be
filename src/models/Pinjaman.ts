@@ -30,7 +30,7 @@ class Pinjaman {
   static async getById(id: number) {
     try {
       const result = await db("pinjaman as p")
-        .join("cicilan as c", "p.id_pinjaman", "c.id_pinjaman")
+        .leftJoin("cicilan as c", "p.id_pinjaman", "c.id_pinjaman")
         .join("r_anggota as a", "p.id_anggota", "a.id")
         .select(
           "p.id_pinjaman",
@@ -44,6 +44,14 @@ class Pinjaman {
           },
         )
         .where("p.id_pinjaman", id)
+        .groupBy(
+          "p.id_pinjaman",
+          "p.keterangan",
+          "p.status",
+          "p.jumlah",
+          "p.createdAt",
+          "a.nama",
+        )
         .first();
       if (!result.jumlah) {
         throw new Error("Pinjaman not found");
