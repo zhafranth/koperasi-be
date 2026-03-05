@@ -121,13 +121,13 @@ class Pinjaman {
       }
 
       // Validasi limit pinjaman keluarga (80% simpanan wajib)
-      const limit = await this.getLimitKeluarga(id_anggota);
+      // const limit = await this.getLimitKeluarga(id_anggota);
 
-      if (Number(jumlah) > limit.sisa_limit) {
-        throw new Error(
-          `Jumlah pinjaman melebihi limit keluarga. Sisa limit: ${limit.sisa_limit} (80% simpanan keluarga: ${limit.max_pinjaman}, pinjaman aktif: ${limit.pinjaman_aktif})`,
-        );
-      }
+      // if (Number(jumlah) > limit.sisa_limit) {
+      //   throw new Error(
+      //     `Jumlah pinjaman melebihi limit keluarga. Sisa limit: ${limit.sisa_limit} (80% simpanan keluarga: ${limit.max_pinjaman}, pinjaman aktif: ${limit.pinjaman_aktif})`,
+      //   );
+      // }
 
       const data = {
         id_anggota,
