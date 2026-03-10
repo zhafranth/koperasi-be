@@ -55,19 +55,23 @@ class SimpananSukarela {
     }
 
     await db.transaction(async (trx) => {
-      await trx("simpanan_sukarela").insert({
+      const [idSukarela] = await trx("simpanan_sukarela").insert({
         id_anggota,
         jumlah: Number(jumlah),
         tanggal: tanggal || new Date(),
         keterangan: keterangan || null,
       });
 
-      await trx("transaksi").insert({
+      const [idTransaksi] = await trx("transaksi").insert({
         id_anggota,
         jenis: "sukarela",
         jumlah: Number(jumlah),
         keterangan: keterangan || "Simpanan sukarela",
       });
+
+      await trx("simpanan_sukarela")
+        .where("id", idSukarela)
+        .update({ id_transaksi: idTransaksi });
     });
   }
 

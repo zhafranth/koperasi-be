@@ -102,8 +102,11 @@ class Simpanan {
             keterangan: `Simpanan bulan ${String(bulan).padStart(2, "0")}-${tahun}`,
           };
 
-          await trx("simpanan").insert(simpananData);
-          await trx("transaksi").insert(transaksiData);
+          const [idSimpanan] = await trx("simpanan").insert(simpananData);
+          const [idTransaksi] = await trx("transaksi").insert(transaksiData);
+          await trx("simpanan")
+            .where("id", idSimpanan)
+            .update({ id_transaksi: idTransaksi });
         }
       });
     } catch (error) {

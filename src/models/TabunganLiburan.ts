@@ -55,19 +55,23 @@ class TabunganLiburan {
     }
 
     await db.transaction(async (trx) => {
-      await trx("tabungan_liburan").insert({
+      const [idLiburan] = await trx("tabungan_liburan").insert({
         id_anggota,
         jumlah: Number(jumlah),
         tanggal: tanggal || new Date(),
         keterangan: keterangan || null,
       });
 
-      await trx("transaksi").insert({
+      const [idTransaksi] = await trx("transaksi").insert({
         id_anggota,
         jenis: "liburan",
         jumlah: Number(jumlah),
         keterangan: keterangan || "Tabungan liburan",
       });
+
+      await trx("tabungan_liburan")
+        .where("id", idLiburan)
+        .update({ id_transaksi: idTransaksi });
     });
   }
 

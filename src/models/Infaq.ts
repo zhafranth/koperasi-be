@@ -43,7 +43,7 @@ class Infaq {
 
         const saldoInfaq =
           Number(totalMasuk[0]?.total || 0) -
-          Number(totalKeluar[0]?.total || 0);
+          Math.abs(Number(totalKeluar[0]?.total || 0));
 
         if (saldoInfaq < Number(jumlah)) {
           throw new Error(
@@ -55,18 +55,21 @@ class Infaq {
       const finalJumlah = isKeluar ? Number(jumlah) * -1 : Number(jumlah);
 
       await db.transaction(async (trx) => {
-        await trx("infaq").insert({
+        const [idInfaq] = await trx("infaq").insert({
           id_anggota: id_anggota || null,
           jumlah: finalJumlah,
           jenis: jenis || "masuk",
           keterangan: keterangan || null,
         });
-        await trx("transaksi").insert({
+        const [idTransaksi] = await trx("transaksi").insert({
           id_anggota: id_anggota || null,
           jenis: "infaq",
           jumlah: finalJumlah,
           keterangan: keterangan || `Infaq ${jenis || "masuk"}`,
         });
+        await trx("infaq")
+          .where("id", idInfaq)
+          .update({ id_transaksi: idTransaksi });
       });
     } catch (error) {
       throw error;

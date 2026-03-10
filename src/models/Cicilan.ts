@@ -28,26 +28,29 @@ class Cicilan {
         throw new Error("Jumlah cicilan melebihi sisa pinjaman");
       }
 
-      const dataCicilan = {
-        id_pinjaman,
-        jumlah,
-      };
+      await db.transaction(async (trx) => {
+        const [idCicilan] = await trx("cicilan").insert({
+          id_pinjaman,
+          jumlah,
+        });
+        const [idTransaksi] = await trx("transaksi").insert({
+          id_anggota: pinjaman.id_anggota,
+          jenis: "cicilan",
+          jumlah: jumlah,
+        });
+        await trx("cicilan")
+          .where("id_cicilan", idCicilan)
+          .update({ id_transaksi: idTransaksi });
 
-      await db("cicilan").insert(dataCicilan);
-      await db("transaksi").insert({
-        id_anggota: pinjaman.id_anggota,
-        jenis: "cicilan",
-        jumlah: jumlah,
+        if (
+          Number(cicilan?.total_cicilan || 0) + Number(jumlah) ===
+          Number(pinjaman.jumlah)
+        ) {
+          await trx("pinjaman")
+            .update({ status: "lunas" })
+            .where("id_pinjaman", id_pinjaman);
+        }
       });
-
-      if (
-        Number(cicilan?.total_cicilan || 0) + Number(jumlah) ===
-        Number(pinjaman.jumlah)
-      ) {
-        await db("pinjaman")
-          .update({ status: "lunas" })
-          .where("id_pinjaman", id_pinjaman);
-      }
     } catch (error) {
       throw error;
     }

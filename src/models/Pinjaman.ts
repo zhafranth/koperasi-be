@@ -136,13 +136,16 @@ class Pinjaman {
         keterangan,
       };
       await db.transaction(async (trx) => {
-        await trx("pinjaman").insert(data);
-        await trx("transaksi").insert({
+        const [idPinjaman] = await trx("pinjaman").insert(data);
+        const [idTransaksi] = await trx("transaksi").insert({
           id_anggota,
           jenis: "pinjaman",
           jumlah: jumlah * -1,
           keterangan,
         });
+        await trx("pinjaman")
+          .where("id_pinjaman", idPinjaman)
+          .update({ id_transaksi: idTransaksi });
       });
     } catch (error) {
       throw error;

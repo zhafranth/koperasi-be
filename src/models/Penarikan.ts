@@ -160,7 +160,7 @@ class Penarikan {
     const now = new Date();
 
     await db.transaction(async (trx) => {
-      await trx("penarikan").insert({
+      const [idPenarikan] = await trx("penarikan").insert({
         id_anggota: isSumberKoperasi ? null : id_anggota,
         jumlah: Number(jumlah),
         tanggal: now,
@@ -169,12 +169,16 @@ class Penarikan {
         keterangan: keterangan || null,
       });
 
-      await trx("transaksi").insert({
+      const [idTransaksi] = await trx("transaksi").insert({
         id_anggota: isSumberKoperasi ? null : id_anggota,
         jenis: "penarikan",
         jumlah: Number(jumlah) * -1,
         keterangan: keterangan || `Penarikan ${sumber}`,
       });
+
+      await trx("penarikan")
+        .where("id", idPenarikan)
+        .update({ id_transaksi: idTransaksi });
     });
   }
 
