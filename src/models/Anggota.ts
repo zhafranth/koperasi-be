@@ -1,23 +1,40 @@
 import db from "../../db";
 
 class Anggota {
-  static async getAll({ nama }: { nama?: string }) {
-    const result = await db("r_anggota")
-      .leftJoin("pinjaman as p", function () {
-        this.on("r_anggota.id", "=", "p.id_anggota").andOnVal(
-          "p.status",
-          "=",
-          "proses",
-        );
-      })
-      .leftJoin("r_keluarga as k", function () {
-        this.on("r_anggota.id_keluarga", "=", "k.id_keluarga");
-      })
-      .modify((qb) => {
-        if (nama?.trim()) {
-          qb.where("r_anggota.nama", "like", `%${nama}%`);
-        }
-      })
+  static async getAll({
+    nama,
+    page = 1,
+    limit = 20,
+  }: {
+    nama?: string;
+    page?: number;
+    limit?: number;
+  }) {
+    const offset = (page - 1) * limit;
+
+    const baseQuery = () =>
+      db("r_anggota")
+        .leftJoin("pinjaman as p", function () {
+          this.on("r_anggota.id", "=", "p.id_anggota").andOnVal(
+            "p.status",
+            "=",
+            "proses",
+          );
+        })
+        .leftJoin("r_keluarga as k", function () {
+          this.on("r_anggota.id_keluarga", "=", "k.id_keluarga");
+        })
+        .modify((qb) => {
+          if (nama?.trim()) {
+            qb.where("r_anggota.nama", "like", `%${nama}%`);
+          }
+        });
+
+    const totalCount = await baseQuery()
+      .countDistinct("r_anggota.id as count")
+      .first();
+
+    const data = await baseQuery()
       .select(
         "r_anggota.id",
         "r_anggota.nama",
@@ -39,9 +56,20 @@ class Anggota {
         "r_anggota.id_keluarga",
         "k.nama_kepala_keluarga",
         "r_anggota.no_telepon",
-      );
+      )
+      .offset(offset)
+      .limit(limit);
 
-    return result;
+    const total = Number(totalCount?.count || 0);
+
+    return {
+      data,
+      pagination: {
+        total,
+        page,
+        total_pages: Math.ceil(total / limit),
+      },
+    };
   }
 
   static async getDetail(id: number) {

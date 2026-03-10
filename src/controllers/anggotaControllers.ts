@@ -6,13 +6,18 @@ import Keluarga from "../models/Keluarga";
 
 export const getAllAnggota = async (req: Request, res: Response) => {
   try {
-    const queryParams = req.query;
-    const anggota = await Anggota.getAll(queryParams);
+    const { nama, page, limit } = req.query;
+    const result = await Anggota.getAll({
+      nama: nama as string | undefined,
+      page: page ? Number(page) : 1,
+      limit: limit ? Number(limit) : 20,
+    });
     res.json({
-      data: anggota.map((item) => ({
+      data: result.data.map((item) => ({
         ...item,
         jumlah_pinjaman: Number(item.jumlah_pinjaman),
       })),
+      pagination: result.pagination,
       message: "Success get all anggota",
     });
   } catch (error) {
