@@ -33,13 +33,19 @@ Database: `koperasi_db` (MySQL)
 ┌───────┐┌───────┐┌────────┐┌────────┐┌────────┐┌─────────┐┌────────┐┌────────┐
 │simpan-││pinja- ││transak-││pengurus││ infaq  ││penari-  ││simpan- ││tabung- │
 │an     ││man    ││si      ││        ││        ││kan      ││an_suka-││an_libu-│
-│       ││       ││        ││        ││        ││(sumber) ││rela    ││ran     │
-└───────┘└──┬────┘└────────┘└────────┘└────────┘└─────────┘└────────┘└────────┘
-            │
-            ▼
-       ┌────────┐
-       │cicilan │
-       └────────┘
+│       ││       ││(audit) ││        ││        ││(sumber) ││rela    ││ran     │
+└───┬───┘└──┬────┘└────────┘└────────┘└───┬────┘└────┬────┘└───┬────┘└───┬────┘
+    │       │         ▲                   │          │         │         │
+    │       ▼         │ id_transaksi      │          │         │         │
+    │  ┌────────┐     │ (nullable)        │          │         │         │
+    │  │cicilan ├─────┤                   │          │         │         │
+    │  └────────┘     │                   │          │         │         │
+    └─────────────────┼───────────────────┘          │         │         │
+                      └──────────────────────────────┴─────────┴─────────┘
+
+Semua 7 tabel finansial (simpanan, pinjaman, cicilan, infaq, penarikan,
+simpanan_sukarela, tabungan_liburan) menyimpan id_transaksi untuk link
+balik ke tabel transaksi. Data lama: id_transaksi = NULL.
 ```
 
 ## Tables
@@ -96,6 +102,7 @@ Menyimpan catatan simpanan bulanan anggota.
 | tahun | varchar(4) | YES | | NULL | Tahun simpanan |
 | metode_pembayaran | enum('transfer','tunai') | YES | | 'transfer' | Metode pembayaran |
 | status | enum('pending','ditolak','diterima') | YES | | 'diterima' | Status simpanan |
+| id_transaksi | int(11) unsigned | YES | | NULL | ID transaksi terkait |
 
 **Foreign Keys:**
 - `id_anggota` → `r_anggota.id`
@@ -114,6 +121,7 @@ Menyimpan data pengajuan pinjaman anggota.
 | createdAt | datetime | YES | | CURRENT_TIMESTAMP | Tanggal pengajuan |
 | status | enum('proses','lunas') | YES | | 'proses' | Status pinjaman |
 | keterangan | text | YES | | NULL | Keterangan tambahan |
+| id_transaksi | int(11) unsigned | YES | | NULL | ID transaksi terkait |
 
 **Foreign Keys:**
 - `id_anggota` → `r_anggota.id`
@@ -134,6 +142,7 @@ Menyimpan catatan pembayaran cicilan pinjaman.
 | id_pinjaman | int(11) | NO | FK | NULL | Referensi ke pinjaman |
 | jumlah | decimal(15,2) | NO | | NULL | Jumlah cicilan |
 | createdAt | datetime | YES | | CURRENT_TIMESTAMP | Tanggal pembayaran |
+| id_transaksi | int(11) unsigned | YES | | NULL | ID transaksi terkait |
 
 **Foreign Keys:**
 - `id_pinjaman` → `pinjaman.id_pinjaman`
@@ -146,20 +155,22 @@ Menyimpan catatan pembayaran cicilan pinjaman.
 
 ### 6. transaksi (Transactions)
 
-Log semua transaksi keuangan anggota.
+Log semua transaksi keuangan. Berfungsi sebagai audit log — setiap operasi keuangan (simpanan, pinjaman, cicilan, dll) wajib insert ke tabel ini. Saldo dihitung dari tabel sumber, bukan dari tabel ini.
 
 | Column | Type | Nullable | Key | Default | Description |
 |--------|------|----------|-----|---------|-------------|
 | id | int(11) | NO | PK | auto_increment | ID unik transaksi |
-| id_anggota | int(11) | NO | FK | NULL | Referensi ke anggota |
-| jenis | enum('simpanan','cicilan','pinjaman','lainnya') | NO | | NULL | Jenis transaksi |
-| jumlah | decimal(15,2) | NO | | NULL | Jumlah transaksi |
+| id_anggota | int(11) | YES | FK | NULL | Referensi ke anggota (NULL untuk transaksi koperasi) |
+| jenis | enum('simpanan','cicilan','pinjaman','lainnya','sukarela','liburan','infaq','penarikan') | NO | | NULL | Jenis transaksi |
+| jumlah | decimal(15,2) | NO | | NULL | Jumlah (positif = masuk, negatif = keluar) |
 | createdAt | datetime | YES | | CURRENT_TIMESTAMP | Tanggal transaksi |
 | keterangan | text | YES | | NULL | Keterangan |
-| saldo_akhir | decimal(15,2) | YES | | NULL | Saldo setelah transaksi |
 
 **Foreign Keys:**
-- `id_anggota` → `r_anggota.id`
+- `id_anggota` → `r_anggota.id` (LEFT JOIN, nullable)
+
+**Relasi ke tabel sumber:**
+Setiap tabel sumber (simpanan, pinjaman, cicilan, infaq, penarikan, simpanan_sukarela, tabungan_liburan) menyimpan `id_transaksi` yang merujuk ke `transaksi.id`. Link ini memungkinkan cascade delete/edit dari transaksi ke record sumber. Data lama yang dibuat sebelum migrasi memiliki `id_transaksi = NULL`.
 
 ---
 
@@ -186,11 +197,12 @@ Menyimpan catatan infaq/donasi.
 | Column | Type | Nullable | Key | Default | Description |
 |--------|------|----------|-----|---------|-------------|
 | id | int(11) | NO | PK | auto_increment | ID unik infaq |
-| id_anggota | int(11) | YES | FK | NULL | Referensi ke anggota |
+| id_anggota | int(11) | YES | FK | NULL | Referensi ke anggota (NULL untuk anonim) |
 | createdAt | datetime | YES | | CURRENT_TIMESTAMP | Tanggal infaq |
 | keterangan | text | YES | | NULL | Keterangan |
-| jumlah | decimal(15,2) | YES | | NULL | Jumlah infaq |
+| jumlah | decimal(15,2) | YES | | NULL | Jumlah infaq (negatif jika jenis='keluar') |
 | jenis | enum('masuk','keluar') | YES | | 'masuk' | Jenis infaq |
+| id_transaksi | int(11) unsigned | YES | | NULL | ID transaksi terkait |
 
 **Foreign Keys:**
 - `id_anggota` → `r_anggota.id`
@@ -205,14 +217,15 @@ Menyimpan catatan penarikan dari berbagai sumber dana. Penarikan simpanan & libu
 |--------|------|----------|-----|---------|-------------|
 | id | int(11) | NO | PK | auto_increment | ID unik penarikan |
 | jumlah | decimal(10,0) | NO | | NULL | Jumlah penarikan |
-| id_anggota | int(11) | NO | FK | NULL | Referensi ke anggota |
+| id_anggota | int(11) | YES | FK | NULL | Referensi ke anggota (NULL untuk dana koperasi: sukarela/infaq) |
 | tanggal | datetime | YES | | CURRENT_TIMESTAMP | Tanggal penarikan |
 | tahun | varchar(6) | YES | | NULL | Tahun penarikan |
 | sumber | enum('simpanan','sukarela','infaq','liburan') | NO | | 'simpanan' | Sumber dana penarikan |
 | keterangan | text | YES | | NULL | Keterangan penarikan |
+| id_transaksi | int(11) unsigned | YES | | NULL | ID transaksi terkait |
 
 **Foreign Keys:**
-- `id_anggota` → `r_anggota.id`
+- `id_anggota` → `r_anggota.id` (LEFT JOIN, nullable)
 
 **Business Rules:**
 - Sumber `simpanan` & `liburan` → penarikan untuk pribadi anggota
@@ -233,6 +246,7 @@ Menyimpan catatan kontribusi sukarela anggota. Dana dapat ditarik untuk kebutuha
 | tanggal | datetime | NO | | CURRENT_TIMESTAMP | Tanggal kontribusi |
 | keterangan | text | YES | | NULL | Keterangan |
 | createdAt | datetime | YES | | CURRENT_TIMESTAMP | Tanggal dibuat |
+| id_transaksi | int(11) unsigned | YES | | NULL | ID transaksi terkait |
 
 **Foreign Keys:**
 - `id_anggota` → `r_anggota.id`
@@ -255,6 +269,7 @@ Menyimpan catatan tabungan anggota yang diperuntukan untuk liburan.
 | tanggal | datetime | NO | | CURRENT_TIMESTAMP | Tanggal setoran |
 | keterangan | text | YES | | NULL | Keterangan |
 | createdAt | datetime | YES | | CURRENT_TIMESTAMP | Tanggal dibuat |
+| id_transaksi | int(11) unsigned | YES | | NULL | ID transaksi terkait |
 
 **Foreign Keys:**
 - `id_anggota` → `r_anggota.id`
