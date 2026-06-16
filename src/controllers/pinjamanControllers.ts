@@ -15,6 +15,35 @@ export const getAllPinjaman = async (req: Request, res: Response) => {
   }
 };
 
+export const getAggregatedPinjaman = async (req: Request, res: Response) => {
+  try {
+    const { status } = req.query;
+    const data = await Pinjaman.getAggregated({
+      status: (status as string) || undefined,
+    });
+    res.json({ data, message: "Success get aggregated pinjaman" });
+  } catch (error: any) {
+    res
+      .status(500)
+      .json({ message: error?.message || "Internal Server Error" });
+  }
+};
+
+export const getAggregatedPinjamanByAnggota = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const { id_anggota } = req.params;
+    const data = await Pinjaman.getAggregatedByAnggota(Number(id_anggota));
+    res.json({ data, message: "Success get aggregated pinjaman by anggota" });
+  } catch (error: any) {
+    res
+      .status(500)
+      .json({ message: error?.message || "Internal Server Error" });
+  }
+};
+
 export const getDetailPinjaman = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;

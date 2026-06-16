@@ -26,6 +26,19 @@ export const createCicilan = async (req: Request, res: Response) => {
   }
 };
 
+export const createDistributedCicilan = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const { id_anggota, jumlah, keterangan } = req.body;
+    await Cicilan.createDistributed({ id_anggota, jumlah, keterangan });
+    res.json({ message: "Success create distributed cicilan" });
+  } catch (error: any) {
+    res.status(500).json({ message: error?.message });
+  }
+};
+
 export const getCicilanByPinjamanId = async (req: Request, res: Response) => {
   try {
     const { id_pinjaman } = req.params;

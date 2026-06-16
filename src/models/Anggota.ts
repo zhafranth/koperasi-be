@@ -14,13 +14,6 @@ class Anggota {
 
     const baseQuery = () =>
       db("r_anggota")
-        .leftJoin("pinjaman as p", function () {
-          this.on("r_anggota.id", "=", "p.id_anggota").andOnVal(
-            "p.status",
-            "=",
-            "proses",
-          );
-        })
         .leftJoin("r_keluarga as k", function () {
           this.on("r_anggota.id_keluarga", "=", "k.id_keluarga");
         })
@@ -46,16 +39,17 @@ class Anggota {
           total_simpanan: db.raw(
             "COALESCE((SELECT SUM(s.jumlah) FROM simpanan s WHERE s.id_anggota = r_anggota.id), 0)",
           ),
+          // Outstanding active loans: jumlah pinjaman - cicilan paid per pinjaman
+          jumlah_pinjaman: db.raw(`
+            COALESCE((
+              SELECT SUM(p.jumlah - COALESCE((
+                SELECT SUM(c.jumlah) FROM cicilan c WHERE c.id_pinjaman = p.id_pinjaman
+              ), 0))
+              FROM pinjaman p
+              WHERE p.id_anggota = r_anggota.id AND p.status = 'proses'
+            ), 0)
+          `),
         },
-      )
-      .sum({ jumlah_pinjaman: db.raw("COALESCE(p.jumlah, 0)") })
-      .groupBy(
-        "r_anggota.id",
-        "r_anggota.nama",
-        "r_anggota.status",
-        "r_anggota.id_keluarga",
-        "k.nama_kepala_keluarga",
-        "r_anggota.no_telepon",
       )
       .offset(offset)
       .limit(limit);

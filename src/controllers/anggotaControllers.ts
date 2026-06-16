@@ -2,6 +2,7 @@ import Anggota from "../models/Anggota";
 import { Request, Response } from "express";
 import Simpanan from "../models/Simpanan";
 import Pinjaman from "../models/Pinjaman";
+import Cicilan from "../models/Cicilan";
 import Keluarga from "../models/Keluarga";
 
 export const getAllAnggota = async (req: Request, res: Response) => {
@@ -13,7 +14,7 @@ export const getAllAnggota = async (req: Request, res: Response) => {
       limit: limit ? Number(limit) : 20,
     });
     res.json({
-      data: result.data.map((item) => ({
+      data: result.data.map((item: any) => ({
         ...item,
         jumlah_pinjaman: Number(item.jumlah_pinjaman),
       })),
@@ -43,11 +44,12 @@ export const getDetailAnggota = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    const [anggota, simpanan, pinjaman, jumlahSimpanan, jumlahPinjaman] =
+    const [anggota, simpanan, pinjaman, cicilan, jumlahSimpanan, jumlahPinjaman] =
       await Promise.all([
         Anggota.getDetail(Number(id)),
         Simpanan.getByUserId(Number(id)),
         Pinjaman.getByUserId(Number(id)),
+        Cicilan.getByUserId(Number(id)),
         Simpanan.getTotalSimpanan(Number(id)),
         Pinjaman.getTotalPinjaman(Number(id)),
       ]);
@@ -69,6 +71,7 @@ export const getDetailAnggota = async (req: Request, res: Response) => {
         anggota_keluarga: anggotaKeluarga || [],
         simpanan,
         pinjaman,
+        cicilan,
       },
       message: "Success get detail anggota",
     });

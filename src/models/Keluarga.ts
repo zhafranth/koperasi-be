@@ -12,13 +12,6 @@ class Keluarga {
       .orderBy("created_date", "desc");
 
     const anggotaList = await db("r_anggota")
-      .leftJoin("pinjaman as p", function () {
-        this.on("r_anggota.id", "=", "p.id_anggota").andOnVal(
-          "p.status",
-          "=",
-          "proses",
-        );
-      })
       .whereNotNull("r_anggota.id_keluarga")
       .select(
         "r_anggota.id",
@@ -27,15 +20,18 @@ class Keluarga {
         "r_anggota.nik",
         "r_anggota.no_telepon",
         "r_anggota.status",
-      )
-      .sum({ jumlah_pinjaman: db.raw("COALESCE(p.jumlah, 0)") })
-      .groupBy(
-        "r_anggota.id",
-        "r_anggota.id_keluarga",
-        "r_anggota.nama",
-        "r_anggota.nik",
-        "r_anggota.no_telepon",
-        "r_anggota.status",
+        {
+          // Outstanding active loans: jumlah - cicilan paid per pinjaman
+          jumlah_pinjaman: db.raw(`
+            COALESCE((
+              SELECT SUM(p.jumlah - COALESCE((
+                SELECT SUM(c.jumlah) FROM cicilan c WHERE c.id_pinjaman = p.id_pinjaman
+              ), 0))
+              FROM pinjaman p
+              WHERE p.id_anggota = r_anggota.id AND p.status = 'proses'
+            ), 0)
+          `),
+        },
       );
 
     const anggotaIds = anggotaList.map((a: any) => a.id);

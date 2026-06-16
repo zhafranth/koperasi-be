@@ -367,6 +367,7 @@ class Transaksi {
       cicilan,
       liburan,
       pinjaman,
+      pinjamanOutstanding,
       penarikan,
       anggotaCount,
       penarikanSimpananSukarela,
@@ -379,6 +380,17 @@ class Transaksi {
       db("cicilan").sum("jumlah as total").first(),
       db("tabungan_liburan").sum("jumlah as total").first(),
       db("pinjaman").where("status", "proses").sum("jumlah as total").first(),
+      // Outstanding active loans: SUM(jumlah - cicilan paid per pinjaman).
+      // Used as the user-facing `jumlah_pinjaman`; raw `pinjaman` total above
+      // stays in `total_dana` formula so its existing semantics don't shift.
+      db("pinjaman as p")
+        .where("p.status", "proses")
+        .select({
+          total: db.raw(`COALESCE(SUM(p.jumlah - COALESCE((
+            SELECT SUM(c.jumlah) FROM cicilan c WHERE c.id_pinjaman = p.id_pinjaman
+          ), 0)), 0)`),
+        })
+        .first(),
       db("penarikan")
         .where("sumber", "simpanan")
         .sum("jumlah as total")
@@ -416,7 +428,7 @@ class Transaksi {
     return {
       total_anggota: Number(anggotaCount?.total || 0),
       jumlah_dana: jumlahDana,
-      jumlah_pinjaman: Number(pinjaman?.total || 0),
+      jumlah_pinjaman: Number(pinjamanOutstanding?.total || 0),
       jumlah_simpanan_sukarela,
       jumlah_infaq,
       jumlah_tabungan_liburan,

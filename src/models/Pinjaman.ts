@@ -24,7 +24,25 @@ class Pinjaman {
   }
 
   static async getByUserId(id: number) {
-    return await db("pinjaman").where("id_anggota", id);
+    return await db("pinjaman as p")
+      .where("p.id_anggota", id)
+      .select(
+        "p.id_pinjaman as id",
+        "p.id_pinjaman",
+        "p.id_anggota",
+        "p.jumlah",
+        "p.createdAt",
+        "p.status",
+        "p.keterangan",
+        {
+          sisa: db.raw(`
+            p.jumlah - COALESCE((
+              SELECT SUM(c.jumlah) FROM cicilan c WHERE c.id_pinjaman = p.id_pinjaman
+            ), 0)
+          `),
+        },
+      )
+      .orderBy("p.createdAt", "desc");
   }
 
   static async getById(id: number) {
@@ -151,11 +169,133 @@ class Pinjaman {
       throw error;
     }
   }
+  // Aggregated list per anggota: 1 row per anggota that has at least 1 pinjaman.
+  // Status is derived: "proses" if any active loan, otherwise "lunas".
+  static async getAggregated({ status }: { status?: string }) {
+    const rows = await db("pinjaman as p")
+      .join("r_anggota as a", "p.id_anggota", "a.id")
+      .select(
+        "a.id as id_anggota",
+        "a.nama as nama_anggota",
+        db.raw("SUM(p.jumlah) as total_pinjaman"),
+        db.raw(`SUM(p.jumlah - COALESCE((
+          SELECT SUM(c.jumlah) FROM cicilan c WHERE c.id_pinjaman = p.id_pinjaman
+        ), 0)) as total_sisa`),
+        db.raw(`SUM(COALESCE((
+          SELECT SUM(c.jumlah) FROM cicilan c WHERE c.id_pinjaman = p.id_pinjaman
+        ), 0)) as total_cicilan`),
+        db.raw(`SUM(CASE WHEN p.status = 'proses' THEN 1 ELSE 0 END) as count_aktif`),
+        db.raw(`SUM(CASE WHEN p.status = 'lunas' THEN 1 ELSE 0 END) as count_lunas`),
+        db.raw("MAX(p.createdAt) as last_createdAt"),
+      )
+      .groupBy("a.id", "a.nama")
+      .orderBy("last_createdAt", "desc");
+
+    const mapped = (rows as any[]).map((r) => ({
+      id_anggota: r.id_anggota,
+      nama_anggota: r.nama_anggota,
+      total_pinjaman: Number(r.total_pinjaman),
+      total_sisa: Number(r.total_sisa),
+      total_cicilan: Number(r.total_cicilan),
+      count_aktif: Number(r.count_aktif),
+      count_lunas: Number(r.count_lunas),
+      status: Number(r.count_aktif) > 0 ? "proses" : "lunas",
+      last_createdAt: r.last_createdAt,
+    }));
+
+    if (status === "proses") return mapped.filter((r) => r.status === "proses");
+    if (status === "lunas") return mapped.filter((r) => r.status === "lunas");
+    return mapped;
+  }
+
+  // Aggregated detail per anggota: rolled-up totals + per-pinjaman breakdown
+  // (for expandable UI) and a flat cicilan history across all of their loans.
+  static async getAggregatedByAnggota(idAnggota: number) {
+    const anggota = await db("r_anggota")
+      .where("id", idAnggota)
+      .select("id", "nama")
+      .first();
+    if (!anggota) throw new Error("Anggota tidak ditemukan");
+
+    const pinjaman = await db("pinjaman as p")
+      .where("p.id_anggota", idAnggota)
+      .select(
+        "p.id_pinjaman",
+        "p.jumlah",
+        "p.status",
+        "p.createdAt",
+        "p.keterangan",
+        {
+          sisa: db.raw(`p.jumlah - COALESCE((
+            SELECT SUM(c.jumlah) FROM cicilan c WHERE c.id_pinjaman = p.id_pinjaman
+          ), 0)`),
+          cicilan_paid: db.raw(`COALESCE((
+            SELECT SUM(c.jumlah) FROM cicilan c WHERE c.id_pinjaman = p.id_pinjaman
+          ), 0)`),
+        },
+      )
+      .orderBy("p.createdAt", "asc");
+
+    const cicilan = await db("cicilan as c")
+      .join("pinjaman as p", "c.id_pinjaman", "p.id_pinjaman")
+      .where("p.id_anggota", idAnggota)
+      .select(
+        "c.id_cicilan as id",
+        "c.id_pinjaman",
+        "c.jumlah",
+        "c.createdAt",
+        "p.keterangan as pinjaman_keterangan",
+      )
+      .orderBy("c.createdAt", "desc");
+
+    const total_pinjaman = (pinjaman as any[]).reduce(
+      (s, p) => s + Number(p.jumlah),
+      0,
+    );
+    const total_sisa = (pinjaman as any[]).reduce(
+      (s, p) => s + Number(p.sisa),
+      0,
+    );
+    const total_cicilan = (pinjaman as any[]).reduce(
+      (s, p) => s + Number(p.cicilan_paid),
+      0,
+    );
+    const count_aktif = (pinjaman as any[]).filter(
+      (p) => p.status === "proses",
+    ).length;
+
+    return {
+      id_anggota: anggota.id,
+      nama_anggota: anggota.nama,
+      total_pinjaman,
+      total_sisa,
+      total_cicilan,
+      status: count_aktif > 0 ? "proses" : "lunas",
+      pinjaman: (pinjaman as any[]).map((p) => ({
+        ...p,
+        jumlah: Number(p.jumlah),
+        sisa: Number(p.sisa),
+        cicilan_paid: Number(p.cicilan_paid),
+      })),
+      cicilan: (cicilan as any[]).map((c) => ({
+        ...c,
+        jumlah: Number(c.jumlah),
+      })),
+    };
+  }
+
+  // Outstanding balance across active loans: SUM(jumlah - cicilan paid).
   static async getTotalPinjaman(id: number) {
-    return await db("pinjaman")
-      .where("id_anggota", id)
-      .where("status", "proses")
-      .sum("jumlah as total")
+    return await db("pinjaman as p")
+      .where("p.id_anggota", id)
+      .where("p.status", "proses")
+      .select({
+        total: db.raw(`
+          COALESCE(SUM(p.jumlah - COALESCE((
+            SELECT SUM(c.jumlah) FROM cicilan c WHERE c.id_pinjaman = p.id_pinjaman
+          ), 0)), 0)
+        `),
+      })
       .first();
   }
 }
