@@ -359,30 +359,34 @@ class Transaksi {
     });
   }
 
+  // Dashboard summary. Treats koperasi as a "common piggy bank":
+  //
+  //   Aset = Kas (uang di dompet) + Piutang (pinjaman outstanding)
+  //   Aset ≡ Total titipan anggota  (accounting identity for a pure koperasi)
+  //
+  // Field semantics:
+  //   saldo_*              — per-bucket titipan: setoran − penarikan
+  //   jumlah_pinjaman      — piutang koperasi (outstanding active loans)
+  //   jumlah_dana          — total titipan anggota (= total aset)
+  //   total_dana           — KAS yang masih di dompet = jumlah_dana − piutang
   static async getTotalTransaksi() {
+    const num = (row?: { total?: any } | null) => Number(row?.total || 0);
+
     const [
-      simpanan,
+      simpananSetor,
+      sukarelaSetor,
+      liburanSetor,
       infaqMasuk,
-      sukarela,
-      cicilan,
-      liburan,
-      pinjaman,
+      infaqKeluar,
       pinjamanOutstanding,
-      penarikan,
+      penarikanRows,
       anggotaCount,
-      penarikanSimpananSukarela,
-      penarikanInfaq,
-      penarikanLiburan,
     ] = await Promise.all([
       db("simpanan").sum("jumlah as total").first(),
-      db("infaq").where("jenis", "masuk").sum("jumlah as total").first(),
       db("simpanan_sukarela").sum("jumlah as total").first(),
-      db("cicilan").sum("jumlah as total").first(),
       db("tabungan_liburan").sum("jumlah as total").first(),
-      db("pinjaman").where("status", "proses").sum("jumlah as total").first(),
-      // Outstanding active loans: SUM(jumlah - cicilan paid per pinjaman).
-      // Used as the user-facing `jumlah_pinjaman`; raw `pinjaman` total above
-      // stays in `total_dana` formula so its existing semantics don't shift.
+      db("infaq").where("jenis", "masuk").sum("jumlah as total").first(),
+      db("infaq").where("jenis", "keluar").sum("jumlah as total").first(),
       db("pinjaman as p")
         .where("p.status", "proses")
         .select({
@@ -391,47 +395,36 @@ class Transaksi {
           ), 0)), 0)`),
         })
         .first(),
-      db("penarikan")
-        .where("sumber", "simpanan")
-        .sum("jumlah as total")
-        .first(),
+      db("penarikan").select("sumber").sum("jumlah as total").groupBy("sumber"),
       db("r_anggota").count("id as total").first(),
-      db("penarikan")
-        .where("sumber", "sukarela")
-        .sum("jumlah as total")
-        .first(),
-      db("penarikan").where("sumber", "infaq").sum("jumlah as total").first(),
-      db("penarikan").where("sumber", "liburan").sum("jumlah as total").first(),
     ]);
 
-    const jumlahDana =
-      Number(simpanan?.total || 0) +
-      Number(infaqMasuk?.total || 0) +
-      Number(sukarela?.total || 0) +
-      Number(cicilan?.total || 0) +
-      Number(liburan?.total || 0);
+    const penarikan = new Map(
+      (penarikanRows as { sumber: string; total: number | string }[]).map(
+        (r) => [r.sumber, Number(r.total)],
+      ),
+    );
+    const penarikanOf = (sumber: string) => penarikan.get(sumber) || 0;
 
-    const jumlah_infaq =
-      Number(infaqMasuk?.total || 0) - Number(penarikanInfaq?.total || 0);
-    const jumlah_tabungan_liburan =
-      Number(liburan?.total || 0) - Number(penarikanLiburan?.total || 0);
-    const jumlah_simpanan_sukarela =
-      Number(sukarela?.total || 0) -
-      Number(penarikanSimpananSukarela?.total || 0);
-    const total_dana =
-      jumlahDana +
-      Number(jumlah_infaq) +
-      Number(jumlah_tabungan_liburan) +
-      (Number(jumlah_simpanan_sukarela) -
-        (Number(penarikan?.total || 0) + Number(pinjaman?.total || 0)));
+    const saldo_simpanan = num(simpananSetor) - penarikanOf("simpanan");
+    const saldo_sukarela = num(sukarelaSetor) - penarikanOf("sukarela");
+    const saldo_liburan = num(liburanSetor) - penarikanOf("liburan");
+    const saldo_infaq =
+      num(infaqMasuk) - num(infaqKeluar) - penarikanOf("infaq");
+
+    const jumlah_pinjaman = num(pinjamanOutstanding);
+    const jumlah_dana =
+      saldo_simpanan + saldo_sukarela + saldo_infaq + saldo_liburan;
+    const total_dana = jumlah_dana - jumlah_pinjaman;
 
     return {
-      total_anggota: Number(anggotaCount?.total || 0),
-      jumlah_dana: jumlahDana,
-      jumlah_pinjaman: Number(pinjamanOutstanding?.total || 0),
-      jumlah_simpanan_sukarela,
-      jumlah_infaq,
-      jumlah_tabungan_liburan,
+      total_anggota: num(anggotaCount),
+      saldo_simpanan,
+      jumlah_simpanan_sukarela: saldo_sukarela,
+      jumlah_infaq: saldo_infaq,
+      jumlah_tabungan_liburan: saldo_liburan,
+      jumlah_pinjaman,
+      jumlah_dana,
       total_dana,
     };
   }
